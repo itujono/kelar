@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Text, Box, useInput } from "ink";
 import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
-import { startOfDay, startOfWeek, startOfMonth, format } from "date-fns";
+import { startOfDay, startOfWeek, startOfMonth, format, differenceInCalendarDays, addMonths, setDate, isAfter } from "date-fns";
 import { Table } from "../components/Table";
 import { dbOps } from "../db";
 import { formatMinutes } from "../utils";
@@ -10,16 +10,24 @@ import { searchIssues, fetchIssueWorklogs } from "../jira";
 import { getAppConfig, isConfigValid } from "../config";
 
 export type SortType = "longest" | "shortest" | "newest" | "oldest";
+export type PeriodType = "day" | "week" | "month";
 
-interface Props {
-  period?: string; // "day", "week", "month"
+interface LogViewProps {
+  period?: PeriodType;
   sortBy?: SortType;
 }
 
 
 type ViewStatus = "IDLE" | "SYNCING" | "SUCCESS" | "ERROR";
 
-export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) => {
+const DEFAULT_TARGET_HOURS = 180;
+const DEFAULT_CALCULATION_DAY = 25;
+
+export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "oldest" }) => {
+  const config = getAppConfig();
+  const targetHours = parseInt(config.MONTHLY_TARGET_HOURS, 10) || DEFAULT_TARGET_HOURS;
+  const calculationDay = parseInt(config.LAST_CALCULATION_DAY, 10) || DEFAULT_CALCULATION_DAY;
+
   const [status, setStatus] = useState<ViewStatus>("IDLE");
   const [logs, setLogs] = useState<import("../db").LogDbRow[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +62,7 @@ export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) 
     sync();
   }, [period]);
 
-  const getSinceDate = (p: string) => {
+  const getSinceDate = (p: PeriodType) => {
     const now = new Date();
     switch (p) {
       case "week": return startOfWeek(now, { weekStartsOn: 1 });
@@ -90,7 +98,6 @@ export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) 
       }
 
       setStatus("SYNCING");
-      const config = getAppConfig();
       const jqlDate = format(sinceDate, "yyyy-MM-dd");
 
       // 1. Fetch matching issues from Jira
@@ -179,6 +186,18 @@ export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) 
   }));
 
   const totalMinutesAll = filteredLogs.reduce((sum, log) => sum + log.minutes, 0);
+  const personalCount = filteredLogs.filter(log => !log.is_jira).length;
+
+  const getDaysRemaining = () => {
+    const now = new Date();
+    let targetDate = setDate(now, calculationDay);
+    if (now.getDate() > calculationDay) {
+      targetDate = addMonths(targetDate, 1);
+    }
+    return differenceInCalendarDays(targetDate, now);
+  };
+
+  const daysRemaining = getDaysRemaining();
 
   if (status === "ERROR") {
     return (
@@ -191,7 +210,7 @@ export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) 
 
   return (
     <Box flexDirection="column" padding={1}>
-      <Box marginBottom={1} flexDirection="row" justifyContent="space-between">
+      <Box marginBottom={1} flexDirection="row" gap={1}>
         <Text bold color="cyan">Work Log Summary ({period.toUpperCase()})</Text>
         {status === "SYNCING" && (
           <Box>
@@ -214,11 +233,32 @@ export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) 
               return val;
             }}
           />
-          <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1}>
-            <Text bold>Grand Total: </Text>
-            <Text color="yellow">{formatMinutes(totalMinutesAll)}</Text>
-            <Text color="dim"> ({totalMinutesAll}m) | </Text>
-            <Text color="cyan">{filteredLogs.length} entries</Text>
+          <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1} flexDirection="column">
+            <Box>
+              <Text bold>Grand Total: </Text>
+              <Text color="yellow">{formatMinutes(totalMinutesAll)}</Text>
+              <Text color="dim"> ({totalMinutesAll}m) | </Text>
+              {period === "month" && (
+                <Text>
+                  <Text color="magenta" bold>{((totalMinutesAll / (targetHours * 60)) * 100).toFixed(1)}%</Text>
+                  <Text color="dim"> of {targetHours}h goal | </Text>
+                  <Text color="yellow" bold>{daysRemaining}</Text>
+                  <Text color="dim"> days left</Text>
+                </Text>
+              )}
+              <Text color="dim"> | </Text>
+              <Text color="cyan">{filteredLogs.length} entries ({personalCount} personal items)</Text>
+            </Box>
+            {period === "month" && (
+              <Box marginTop={1}>
+                <Text color="magenta">
+                  {"█".repeat(Math.min(30, Math.floor((totalMinutesAll / (targetHours * 60)) * 30)))}
+                  <Text color="dim">
+                    {"░".repeat(Math.max(0, 30 - Math.floor((totalMinutesAll / (targetHours * 60)) * 30)))}
+                  </Text>
+                </Text>
+              </Box>
+            )}
           </Box>
         </>
       ) : (

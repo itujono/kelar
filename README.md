@@ -28,7 +28,7 @@
 
 ## Configuration
 
-Set up your Jira credentials before your first log:
+Set up your Jira credentials and work targets before your first log:
 
 ```bash
 kelar log config set JIRA_DOMAIN your-domain.atlassian.net
@@ -36,6 +36,8 @@ kelar log config set JIRA_EMAIL your@email.com
 kelar log config set JIRA_TOKEN your_api_token
 kelar log config set JIRA_ACCOUNT_ID your_jira_account_id
 kelar log config set PERSONAL_TICKET_ID IMM-123  # Target for personal work strings
+kelar log config set MONTHLY_TARGET_HOURS 180    # Your monthly hours quota (Default: 180)
+kelar log config set LAST_CALCULATION_DAY 25     # Deadline day each month (Default: 25th)
 ```
 
 View current config with `kelar log config list`.
@@ -69,6 +71,12 @@ The `view` command mirrors Jira to your local database and caches the result for
 kelar log view [period]
 ```
 
+#### Monthly Goal Tracking
+When viewing the `month` period, Kelar provides automated progress tracking:
+- **Progress Bar**: A visual indicator of your `MONTHLY_TARGET_HOURS` completion.
+- **Deadline Countdown**: Shows days remaining until your `LAST_CALCULATION_DAY`.
+- **Dynamic Percentage**: Real-time calculation of your reach against the goal.
+
 #### Interactive Filtering
 The dashboard supports real-time, interactive filtering:
 1.  **Toggle**: Press **`/`** while viewing any list to open the filter bar.
@@ -77,7 +85,7 @@ The dashboard supports real-time, interactive filtering:
     -   **`Enter`**: Commit the filter and keep the view.
     -   **`Esc`**: Close the filter and reset the table.
 
-The **Grand Total** and **Entry Count** update dynamically as you type!
+The **Grand Total**, **Progress Bar**, and **Entry Count** update dynamically as you type!
 
 #### Advanced Sorting
 Use the `--sort` (or `-s`) flag to organize your table:

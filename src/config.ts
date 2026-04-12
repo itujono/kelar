@@ -6,6 +6,8 @@ export const CONFIG_KEYS = {
   JIRA_TOKEN: "JIRA_TOKEN",
   JIRA_ACCOUNT_ID: "JIRA_ACCOUNT_ID",
   PERSONAL_TICKET_ID: "PERSONAL_TICKET_ID",
+  MONTHLY_TARGET_HOURS: "MONTHLY_TARGET_HOURS",
+  LAST_CALCULATION_DAY: "LAST_CALCULATION_DAY",
 } as const;
 
 export type ConfigKey = keyof typeof CONFIG_KEYS;
@@ -15,7 +17,12 @@ export function getAppConfig() {
   for (const key of Object.values(CONFIG_KEYS)) {
     config[key] = dbOps.getConfig(key);
   }
-  return config as Record<ConfigKey, string | null>;
+  
+  // Set defaults if missing
+  if (!config.MONTHLY_TARGET_HOURS) config.MONTHLY_TARGET_HOURS = "180";
+  if (!config.LAST_CALCULATION_DAY) config.LAST_CALCULATION_DAY = "25";
+
+  return config as Record<ConfigKey, string>;
 }
 
 export function setAppConfig(key: ConfigKey, value: string) {
@@ -32,7 +39,7 @@ export function isConfigValid(): { valid: boolean; missing: string[] } {
     "PERSONAL_TICKET_ID",
   ];
   
-  const missing = required.filter(k => !config[k]);
+  const missing = required.filter(k => !dbOps.getConfig(k));
   return {
     valid: missing.length === 0,
     missing

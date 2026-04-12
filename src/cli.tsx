@@ -51,7 +51,7 @@ config
 config
   .command("set")
   .description("Update a configuration value")
-  .argument("<key>", "Config key (JIRA_DOMAIN, JIRA_EMAIL, JIRA_TOKEN, JIRA_ACCOUNT_ID, PERSONAL_TICKET_ID)")
+  .argument("<key>", "Config key (JIRA_DOMAIN, JIRA_EMAIL, JIRA_TOKEN, JIRA_ACCOUNT_ID, PERSONAL_TICKET_ID, MONTHLY_TARGET_HOURS, LAST_CALCULATION_DAY)")
   .argument("<value>", "New value")
   .action((key, value) => {
     const upperKey = key.toUpperCase() as ConfigKey;
