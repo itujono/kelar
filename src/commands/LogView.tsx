@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Text, Box, useInput } from "ink";
 import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
-import { startOfDay, startOfWeek, startOfMonth, format, differenceInCalendarDays, addMonths, setDate, isAfter } from "date-fns";
+import { startOfDay, startOfWeek, startOfMonth, format, differenceInCalendarDays, addMonths, setDate } from "date-fns";
 import { Table } from "../components/Table";
 import { dbOps } from "../db";
 import { formatMinutes } from "../utils";
@@ -44,7 +44,6 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
       setFilterQuery("");
     }
 
-    // 3. Clear line on Ctrl+U (\u0015 is the raw code for Ctrl+U)
     if (key.ctrl && (input === "u" || input === "\u0015")) {
       setFilterQuery("");
     }
@@ -81,7 +80,7 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
     const lastSyncKey = `LAST_SYNC_${period.toUpperCase()}`;
 
     try {
-      // 1. Check persistent cache (5 minute threshold)
+      // Check persistent cache (5 minute threshold)
       const lastSyncStr = dbOps.getConfig(lastSyncKey);
       if (lastSyncStr) {
         const lastSync = new Date(lastSyncStr);
@@ -98,11 +97,9 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
       setStatus("SYNCING");
       const jqlDate = format(sinceDate, "yyyy-MM-dd");
 
-      // 1. Fetch matching issues from Jira
       const jql = `worklogAuthor = currentUser() AND worklogDate >= "${jqlDate}"`;
       const issues = await searchIssues(jql);
 
-      // 2. Fetch worklogs for each issue and filter
       const myAccountId = config.JIRA_ACCOUNT_ID;
       const remoteLogs = [];
 
@@ -113,7 +110,6 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
           if (wl.author.accountId === myAccountId && wlDate >= sinceDate) {
             const isPersonal = issue.key === config.PERSONAL_TICKET_ID;
 
-            // Extract comment text from ADF if it exists
             let commentText = "";
             if (wl.comment?.content?.[0]?.content?.[0]?.text) {
               commentText = wl.comment.content[0].content[0].text;
@@ -131,16 +127,13 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
         }
       }
 
-      // 3. Update local DB (Mirror Jira)
       dbOps.clearAllLogsInRange(sinceDate.toISOString());
       for (const rl of remoteLogs) {
         dbOps.addLog(rl);
       }
 
-      // 4. Update Sync Timestamp
       dbOps.setConfig(lastSyncKey, new Date().toISOString());
 
-      // 5. Load from DB
       const updatedLogs = dbOps.getLogs(sinceDate.toISOString());
       setLogs(updatedLogs);
       setStatus("SUCCESS");
