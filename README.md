@@ -40,7 +40,7 @@ kelar log config set MONTHLY_TARGET_HOURS 180    # Your monthly hours quota (Def
 kelar log config set LAST_CALCULATION_DAY 25     # Deadline day each month (Default: 25th)
 ```
 
-View current config with `kelar log config list`.
+View current config with `kelar log config view`.
 
 ## Usage
 

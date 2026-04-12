@@ -41,8 +41,8 @@ log
 const config = log.command("config").description("Manage configuration");
 
 config
-  .command("list")
-  .description("List current configuration")
+  .command("view")
+  .description("View current configuration")
   .action(async () => {
     const { waitUntilExit } = render(<LogConfig />);
     await waitUntilExit();
@@ -80,7 +80,7 @@ config
     }
   });
 
-// Handle 'log config' to default to 'list'
+// Handle 'log config' to default to 'view'
 config.action(async () => {
   const { waitUntilExit } = render(<LogConfig />);
   await waitUntilExit();
