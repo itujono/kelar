@@ -24,27 +24,37 @@ export const LogView: React.FC<Props> = ({ period = "day" }) => {
     sync();
   }, [period]);
 
-  async function sync() {
-    try {
-      setStatus("SYNCING");
-      const config = getAppConfig();
-      const now = new Date();
-      let sinceDate: Date;
-      let jqlDate: string;
+  const getSinceDate = (p: string) => {
+    const now = new Date();
+    switch (p) {
+      case "week": return startOfWeek(now, { weekStartsOn: 1 });
+      case "month": return startOfMonth(now);
+      default: return startOfDay(now);
+    }
+  };
 
-      switch (period) {
-        case "week":
-          sinceDate = startOfWeek(now, { weekStartsOn: 1 });
-          break;
-        case "month":
-          sinceDate = startOfMonth(now);
-          break;
-        default:
-          sinceDate = startOfDay(now);
-          break;
+  async function sync() {
+    const sinceDate = getSinceDate(period);
+    const lastSyncKey = `LAST_SYNC_${period.toUpperCase()}`;
+
+    try {
+      // 1. Check persistent cache (5 minute threshold)
+      const lastSyncStr = dbOps.getConfig(lastSyncKey);
+      if (lastSyncStr) {
+        const lastSync = new Date(lastSyncStr);
+        const ageInMinutes = (new Date().getTime() - lastSync.getTime()) / (1000 * 60);
+
+        if (ageInMinutes < 5) {
+          const cachedLogs = dbOps.getLogs(sinceDate.toISOString());
+          setLogs(cachedLogs);
+          setStatus("SUCCESS");
+          return;
+        }
       }
 
-      jqlDate = format(sinceDate, "yyyy-MM-dd");
+      setStatus("SYNCING");
+      const config = getAppConfig();
+      const jqlDate = format(sinceDate, "yyyy-MM-dd");
 
       // 1. Fetch matching issues from Jira
       const jql = `worklogAuthor = currentUser() AND worklogDate >= "${jqlDate}"`;
@@ -85,7 +95,10 @@ export const LogView: React.FC<Props> = ({ period = "day" }) => {
         dbOps.addLog(rl);
       }
 
-      // 4. Load from DB
+      // 4. Update Sync Timestamp
+      dbOps.setConfig(lastSyncKey, new Date().toISOString());
+
+      // 5. Load from DB
       const updatedLogs = dbOps.getLogs(sinceDate.toISOString());
       setLogs(updatedLogs);
       setStatus("SUCCESS");
