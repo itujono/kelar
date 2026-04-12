@@ -1,30 +1,38 @@
 import React, { useState, useEffect } from "react";
 import { Text, Box, useApp } from "ink";
 import Spinner from "ink-spinner";
+import TextInput from "ink-text-input";
 import { JIRA_KEY_REGEX, parseJiraTime, roundToNearest5, getNowWithOffset } from "../utils";
 import { fetchIssueDetails, postWorklog } from "../jira";
 import { getAppConfig } from "../config";
 import { dbOps } from "../db";
 
-type Status = "IDLE" | "VALIDATING" | "SYNCING" | "SUCCESS" | "ERROR" | "WARNING_OVERRIDE";
+type Status = "IDLE" | "GET_COMMENT" | "VALIDATING" | "SYNCING" | "SUCCESS" | "ERROR" | "WARNING_OVERRIDE";
 
 interface Props {
   identifier: string;
   time: string;
+  initialComment?: string;
 }
 
-export const LogNew: React.FC<Props> = ({ identifier, time }) => {
+export const LogNew: React.FC<Props> = ({ identifier, time, initialComment }) => {
   const { exit } = useApp();
   const [status, setStatus] = useState<Status>("IDLE");
+  const [comment, setComment] = useState(initialComment || "");
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
-    run();
-  }, [identifier, time]);
+    const isJiraKey = JIRA_KEY_REGEX.test(identifier);
+    if (!initialComment && isJiraKey) {
+      setStatus("GET_COMMENT");
+    } else {
+      run(initialComment || "");
+    }
+  }, [identifier, time, initialComment]);
 
-  async function run() {
+  async function run(finalComment: string) {
     try {
       setStatus("VALIDATING");
 
@@ -35,7 +43,7 @@ export const LogNew: React.FC<Props> = ({ identifier, time }) => {
       const started = getNowWithOffset();
 
       let targetIssueKey = identifier;
-      let worklogComment = "";
+      let worklogComment = finalComment;
       let label = "";
 
       if (isJiraKey) {
@@ -46,10 +54,11 @@ export const LogNew: React.FC<Props> = ({ identifier, time }) => {
         const myAccountId = config.JIRA_ACCOUNT_ID;
         if (issue.fields.assignee?.accountId !== myAccountId) {
           setWarning(`Warning: This ticket is assigned to ${issue.fields.assignee?.displayName || "someone else"}.`);
-          // In a real TUI we'd wait for keypress to override, 
-          // but for this version we'll just log it and proceed as per instructions "allow override".
         }
-        worklogComment = "Logged via Kelar CLI";
+        // Use provided comment, or default to empty string if not provided
+        if (!worklogComment) {
+          worklogComment = "";
+        }
       } else {
         // Personal log
         if (!config.PERSONAL_TICKET_ID) {
@@ -57,7 +66,7 @@ export const LogNew: React.FC<Props> = ({ identifier, time }) => {
         }
         targetIssueKey = config.PERSONAL_TICKET_ID;
         worklogComment = identifier;
-        label = identifier; // For personal logs, the label is the activity string
+        label = identifier;
       }
 
       setStatus("SYNCING");
@@ -86,6 +95,19 @@ export const LogNew: React.FC<Props> = ({ identifier, time }) => {
         <Text bold color="yellow">Logging Work: </Text>
         <Text>{identifier} ({roundToNearest5(parseJiraTime(time))}m)</Text>
       </Box>
+
+      {status === "GET_COMMENT" && (
+        <Box flexDirection="column">
+          <Text color="yellow">What did you do? (Optional, press Enter to skip)</Text>
+          <Box borderStyle="single" borderColor="gray" paddingX={1} marginTop={1}>
+            <TextInput 
+              value={comment} 
+              onChange={setComment} 
+              onSubmit={(val) => run(val)}
+            />
+          </Box>
+        </Box>
+      )}
 
       {status === "VALIDATING" && (
         <Box>

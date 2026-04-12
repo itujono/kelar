@@ -47,11 +47,14 @@ kelar log config list
 
 Kelar intelligently routes your logs based on the identifier:
 
-- **Jira Tickets**: If the identifier matches a Jira Key regex (`/^[A-Z]+-\d+$/`).
+- **Jira Tickets**: If the identifier matches a Jira Key regex (`/^[A-Z]+-\d+$/`). If no comment is provided via CLI, it will prompt you for one.
 - **Personal Strings**: If the identifier is anything else, it logs to your `PERSONAL_TICKET_ID`.
 
 ```bash
-# Log to a specific project ticket
+# Log to a specific project ticket with a comment
+kelar log new IMM-123 45m "Implemented the auth flow"
+
+# Log to a project ticket (will prompt for a comment)
 kelar log new IMM-123 45m
 
 # Log a personal activity (goes to your PERSONAL_TICKET_ID)

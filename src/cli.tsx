@@ -21,8 +21,9 @@ log
   .command("new")
   .argument("<identifier>", "Jira key (e.g. IMM-123) or a string for personal log")
   .argument("<time>", "Time spent (e.g. 45m, 1h, 1h 30m)")
-  .action(async (identifier, time) => {
-    const { waitUntilExit } = render(<LogNew identifier={identifier} time={time} />);
+  .argument("[comment]", "Optional comment for the worklog")
+  .action(async (identifier, time, comment) => {
+    const { waitUntilExit } = render(<LogNew identifier={identifier} time={time} initialComment={comment} />);
     await waitUntilExit();
   });
 
