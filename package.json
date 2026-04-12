@@ -1,0 +1,31 @@
+{
+  "name": "kelar",
+  "version": "1.0.0",
+  "module": "src/cli.tsx",
+  "type": "module",
+  "bin": {
+    "kelar": "./src/cli.tsx"
+  },
+  "private": true,
+  "scripts": {
+    "dev": "bun run src/cli.tsx",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "date-fns": "^4.1.0",
+    "ink": "^7.0.0",
+    "ink-spinner": "^5.0.0",
+    "react": "^19.2.5",
+    "zod": "^4.3.6"
+  }
+}
