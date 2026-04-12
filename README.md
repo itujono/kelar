@@ -1,4 +1,4 @@
-# Kelar CLI 🛠️
+# Kelar CLI 🍗
 
 **Kelar** is a fast, terminal-based Jira worklog manager built with **Bun**, **TypeScript**, and **Ink**. It provides a premium TUI (Terminal User Interface) to manage your productivity, automatically mirroring your Jira Cloud worklogs to a local SQLite database with smart caching.
 

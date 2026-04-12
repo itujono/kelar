@@ -6,7 +6,7 @@ import { Table } from "../components/Table";
 import { dbOps } from "../db";
 import { formatMinutes } from "../utils";
 import { searchIssues, fetchIssueWorklogs } from "../jira";
-import { getAppConfig } from "../config";
+import { getAppConfig, isConfigValid } from "../config";
 
 export type SortType = "longest" | "shortest" | "newest" | "oldest";
 
@@ -37,6 +37,13 @@ export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) 
   };
 
   async function sync() {
+    const { valid, missing } = isConfigValid();
+    if (!valid) {
+      setError(`Configuration incomplete. Missing: ${missing.join(", ")}`);
+      setStatus("ERROR");
+      return;
+    }
+
     const sinceDate = getSinceDate(period);
     const lastSyncKey = `LAST_SYNC_${period.toUpperCase()}`;
 
