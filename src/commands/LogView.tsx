@@ -7,7 +7,7 @@ import { Table } from "../components/Table";
 import { dbOps } from "../db";
 import { formatMinutes } from "../utils";
 import { searchIssues, fetchIssueWorklogs } from "../jira";
-import { getAppConfig, isConfigValid } from "../config";
+import { DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS, getAppConfig, isConfigValid } from "../config";
 
 export type SortType = "longest" | "shortest" | "newest" | "oldest";
 export type PeriodType = "day" | "week" | "month";
@@ -19,13 +19,11 @@ interface LogViewProps {
 
 
 type ViewStatus = "IDLE" | "SYNCING" | "SUCCESS" | "ERROR";
-
-const DEFAULT_TARGET_HOURS = 180;
-const DEFAULT_CALCULATION_DAY = 25;
+const CACHE_THRESHOLD_MINUTES = 5;
 
 export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "oldest" }) => {
   const config = getAppConfig();
-  const targetHours = parseInt(config.MONTHLY_TARGET_HOURS, 10) || DEFAULT_TARGET_HOURS;
+  const targetHours = parseInt(config.MONTHLY_TARGET_HOURS, 10) || DEFAULT_MONTHLY_TARGET_HOURS;
   const calculationDay = parseInt(config.LAST_CALCULATION_DAY, 10) || DEFAULT_CALCULATION_DAY;
 
   const [status, setStatus] = useState<ViewStatus>("IDLE");
@@ -89,7 +87,7 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
         const lastSync = new Date(lastSyncStr);
         const ageInMinutes = (new Date().getTime() - lastSync.getTime()) / (1000 * 60);
 
-        if (ageInMinutes < 5) {
+        if (ageInMinutes < CACHE_THRESHOLD_MINUTES) {
           const cachedLogs = dbOps.getLogs(sinceDate.toISOString());
           setLogs(cachedLogs);
           setStatus("SUCCESS");
