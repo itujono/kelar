@@ -99,6 +99,18 @@ kelar log view month -s newest
 # View options: oldest (default), newest, longest, shortest
 ```
 
+### Capturing Reports
+When you need to share your work progress with your manager or CTO, use the `capture` command. It generates a high-fidelity **HTML Dashboard** snapshot of your logs, goal progress, and detailed work breakdown.
+
+```bash
+# Generate a beautiful monthly report
+kelar log capture month
+```
+
+- **Dashboards**: Creates a styled `kelar-report-month-YYYY-MM-DD.html` file.
+- **Reporting Ready**: Open in any browser to print as PDF or take a high-res screenshot.
+- **Clean Performance**: Runs a silent sync and provides a simple confirmation of the generated file.
+
 ## Data Storage & Security
 
 Kelar is designed to be safe for open-source contribution:

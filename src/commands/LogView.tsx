@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Text, Box, useInput } from "ink";
+import { Text, Box, useInput, useApp } from "ink";
 import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
 import { startOfDay, startOfWeek, startOfMonth, format, differenceInCalendarDays, addMonths, setDate } from "date-fns";
@@ -8,6 +8,7 @@ import { dbOps } from "../db";
 import { formatMinutes } from "../utils";
 import { searchIssues, fetchIssueWorklogs } from "../jira";
 import { DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS, getAppConfig, isConfigValid } from "../config";
+import { generateHtmlReport } from "../report";
 
 export type SortType = "longest" | "shortest" | "newest" | "oldest";
 export type PeriodType = "day" | "week" | "month";
@@ -15,13 +16,15 @@ export type PeriodType = "day" | "week" | "month";
 interface LogViewProps {
   period?: PeriodType;
   sortBy?: SortType;
+  isCaptureMode?: boolean;
 }
 
 
 type ViewStatus = "IDLE" | "SYNCING" | "SUCCESS" | "ERROR";
 const CACHE_THRESHOLD_MINUTES = 5;
 
-export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "oldest" }) => {
+export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "oldest", isCaptureMode = false }) => {
+  const { exit } = useApp();
   const config = getAppConfig();
   const targetHours = parseInt(config.MONTHLY_TARGET_HOURS, 10) || DEFAULT_MONTHLY_TARGET_HOURS;
   const calculationDay = parseInt(config.LAST_CALCULATION_DAY, 10) || DEFAULT_CALCULATION_DAY;
@@ -31,6 +34,7 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
   const [error, setError] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState("");
   const [isFiltering, setIsFiltering] = useState(false);
+  const [capturedFile, setCapturedFile] = useState<string | null>(null);
 
   useInput((input, key) => {
     if (input === "/" && !isFiltering) {
@@ -58,6 +62,8 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
   useEffect(() => {
     sync();
   }, [period]);
+
+
 
   const getSinceDate = (p: PeriodType) => {
     const now = new Date();
@@ -190,11 +196,63 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
 
   const daysRemaining = getDaysRemaining();
 
+  const getEmptyMessage = () => {
+    const now = new Date();
+    if (period === "day") return "No logs yet today. Ready to crush some tasks?";
+    if (period === "week" && now.getDay() === 1) return "The week has just started! Time to build some momentum.";
+    if (period === "month" && now.getDate() <= 3) return "Fresh month alert! Let's get a head start on that goal.";
+    return `No logs found for this ${period} in Jira.`;
+  };
+
+  useEffect(() => {
+    if (isCaptureMode && status === "SUCCESS") {
+      const html = generateHtmlReport(
+        sortedLogs,
+        period,
+        targetHours,
+        calculationDay,
+        daysRemaining,
+        totalMinutesAll,
+        personalCount
+      );
+
+      const filename = `kelar-report-${period}-${format(new Date(), "yyyy-MM-dd")}.html`;
+      // @ts-ignore - Bun global
+      Bun.write(filename, html).then(() => {
+        setCapturedFile(filename);
+        // Wait a bit before exiting so user can read the success message
+        setTimeout(() => exit(), 1500);
+      });
+    } else if (isCaptureMode && status === "ERROR") {
+      exit();
+    }
+  }, [status, isCaptureMode, exit, sortedLogs, period, targetHours, calculationDay, daysRemaining, totalMinutesAll, personalCount]);
+
   if (status === "ERROR") {
     return (
       <Box padding={1} flexDirection="column">
         <Text color="red">Error syncing logs:</Text>
         <Text>{error}</Text>
+      </Box>
+    );
+  }
+
+  if (isCaptureMode) {
+    return (
+      <Box padding={1} flexDirection="column">
+        {status === "SYNCING" ? (
+          <Box>
+            <Spinner type="dots" />
+            <Text italic> Generating work log snapshot...</Text>
+          </Box>
+        ) : capturedFile ? (
+          <Box flexDirection="column">
+            <Text color="green" bold>✅ Snapshot generated successfully!</Text>
+            <Text color="dim">Saved to: <Text color="cyan">{capturedFile}</Text></Text>
+          </Box>
+        ) : (
+          <Text italic color="dim">Preparing report data...</Text>
+        )}
       </Box>
     );
   }
@@ -253,7 +311,7 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
           </Box>
         </>
       ) : (
-        status !== "SYNCING" && <Text color="dim">No logs found for this period in Jira.</Text>
+        status !== "SYNCING" && <Text color="dim">{getEmptyMessage()}</Text>
       )}
 
       <Box marginTop={1} flexDirection="column">
@@ -280,7 +338,7 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
           </Box>
         )}
 
-        {!isFiltering && status !== "SYNCING" && (
+        {!isCaptureMode && !isFiltering && status !== "SYNCING" && logs.length > 0 && (
           <Box>
             <Text color="dim">Press </Text>
             <Text bold color="cyan">/</Text>

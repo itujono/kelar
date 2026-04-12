@@ -101,9 +101,9 @@ export const LogNew: React.FC<Props> = ({ identifier, time, initialComment }) =>
         <Box flexDirection="column">
           <Text color="yellow">What did you do? (Optional, press Enter to skip)</Text>
           <Box borderStyle="single" borderColor="gray" paddingX={1} marginTop={1}>
-            <TextInput 
-              value={comment} 
-              onChange={setComment} 
+            <TextInput
+              value={comment}
+              onChange={setComment}
               onSubmit={(val) => run(val)}
             />
           </Box>
