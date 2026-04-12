@@ -9,6 +9,14 @@ interface Props {
   period?: string; // "day", "week", "month"
 }
 
+interface GroupedLog {
+  identifier: string;
+  label: string;
+  totalMinutes: number;
+  entries: number;
+  type: "Jira" | "Personal";
+}
+
 export const LogView: React.FC<Props> = ({ period = "day" }) => {
   const now = new Date();
   let since: Date;
@@ -34,6 +42,7 @@ export const LogView: React.FC<Props> = ({ period = "day" }) => {
     if (!acc[id]) {
       acc[id] = {
         identifier: id,
+        label: log.label || "",
         totalMinutes: 0,
         entries: 0,
         type: log.is_jira ? "Jira" : "Personal"
@@ -46,10 +55,11 @@ export const LogView: React.FC<Props> = ({ period = "day" }) => {
       item.entries += 1;
     }
     return acc;
-  }, {} as Record<string, { identifier: string; totalMinutes: number; entries: number; type: string }>);
+  }, {} as Record<string, GroupedLog>);
 
   const data = Object.values(grouped).map(item => ({
     Identifier: item.identifier,
+    Label: item.label,
     Type: item.type,
     Entries: item.entries,
     "Total Time": formatMinutes(item.totalMinutes)

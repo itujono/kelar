@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Text, Box } from "ink";
+import { Text, Box, useApp } from "ink";
 import Spinner from "ink-spinner";
 import { JIRA_KEY_REGEX, parseJiraTime, roundToNearest5, getNowWithOffset } from "../utils";
 import { fetchIssueDetails, postWorklog } from "../jira";
@@ -14,6 +14,7 @@ interface Props {
 }
 
 export const LogNew: React.FC<Props> = ({ identifier, time }) => {
+  const { exit } = useApp();
   const [status, setStatus] = useState<Status>("IDLE");
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -35,11 +36,12 @@ export const LogNew: React.FC<Props> = ({ identifier, time }) => {
 
       let targetIssueKey = identifier;
       let worklogComment = "";
+      let label = "";
 
       if (isJiraKey) {
-        // Fetch details to validate assignee
         const issue = await fetchIssueDetails(identifier);
         setInfo(`Found ticket: ${issue.fields.summary}`);
+        label = issue.fields.summary;
 
         const myAccountId = config.JIRA_ACCOUNT_ID;
         if (issue.fields.assignee?.accountId !== myAccountId) {
@@ -54,23 +56,24 @@ export const LogNew: React.FC<Props> = ({ identifier, time }) => {
           throw new Error("PERSONAL_TICKET_ID not set in config.");
         }
         targetIssueKey = config.PERSONAL_TICKET_ID;
-        worklogComment = identifier; // Identifier is the comment for personal logs
+        worklogComment = identifier;
+        label = identifier; // For personal logs, the label is the activity string
       }
 
       setStatus("SYNCING");
 
-      // POST worklog to Jira
       await postWorklog(targetIssueKey, minutes, worklogComment, started);
 
-      // Save to local SQLite
       dbOps.addLog({
-        identifier: identifier, // Store original identifier
+        identifier: identifier,
+        label: label,
         minutes,
         is_jira: isJiraKey,
         created_at: started,
       });
 
       setStatus("SUCCESS");
+      setTimeout(() => exit(), 1000);
     } catch (err: any) {
       setError(err.message);
       setStatus("ERROR");

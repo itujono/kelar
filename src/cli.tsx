@@ -21,16 +21,18 @@ log
   .command("new")
   .argument("<identifier>", "Jira key (e.g. IMM-123) or a string for personal log")
   .argument("<time>", "Time spent (e.g. 45m, 1h, 1h 30m)")
-  .action((identifier, time) => {
-    render(<LogNew identifier={identifier} time={time} />);
+  .action(async (identifier, time) => {
+    const { waitUntilExit } = render(<LogNew identifier={identifier} time={time} />);
+    await waitUntilExit();
   });
 
 // log view [period]
 log
   .command("view")
   .argument("[period]", "Period to view (day, week, month)", "day")
-  .action((period) => {
-    render(<LogView period={period} />);
+  .action(async (period) => {
+    const { waitUntilExit } = render(<LogView period={period} />);
+    await waitUntilExit();
   });
 
 // log config [subcommand]
@@ -39,8 +41,9 @@ const config = log.command("config").description("Manage configuration");
 config
   .command("list")
   .description("List current configuration")
-  .action(() => {
-    render(<LogConfig />);
+  .action(async () => {
+    const { waitUntilExit } = render(<LogConfig />);
+    await waitUntilExit();
   });
 
 config
@@ -52,23 +55,33 @@ config
     const upperKey = key.toUpperCase() as ConfigKey;
     if (CONFIG_KEYS[upperKey]) {
       setAppConfig(upperKey, value);
-      render(
+      const { unmount } = render(
         <Box padding={1}>
           <Text color="green">✅ Updated {upperKey} successfully!</Text>
         </Box>
       );
+      // Give it a tiny bit of time to render then unmount clean
+      setTimeout(() => {
+        unmount();
+        process.exit(0);
+      }, 50);
     } else {
-      render(
+      const { unmount } = render(
         <Box padding={1}>
           <Text color="red">❌ Invalid config key: {key}</Text>
         </Box>
       );
+      setTimeout(() => {
+        unmount();
+        process.exit(1);
+      }, 50);
     }
   });
 
 // Handle 'log config' to default to 'list'
-config.action(() => {
-  render(<LogConfig />);
+config.action(async () => {
+  const { waitUntilExit } = render(<LogConfig />);
+  await waitUntilExit();
 });
 
 program.parse(process.argv);

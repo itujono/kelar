@@ -18,11 +18,19 @@ db.run(`
   CREATE TABLE IF NOT EXISTS logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     identifier TEXT NOT NULL,
+    label TEXT,
     minutes INTEGER NOT NULL,
     is_jira INTEGER NOT NULL,
     created_at TEXT NOT NULL
   )
 `);
+
+// Migration: Add label column if it doesn't exist
+try {
+  db.run("ALTER TABLE logs ADD COLUMN label TEXT");
+} catch {
+  // Column already exists or other error we can ignore for now
+}
 
 db.run(`
   CREATE TABLE IF NOT EXISTS config (
@@ -34,8 +42,18 @@ db.run(`
 export interface LogEntry {
   id?: number;
   identifier: string;
+  label?: string;
   minutes: number;
   is_jira: boolean;
+  created_at: string;
+}
+
+export interface LogDbRow {
+  id: number;
+  identifier: string;
+  label: string | null;
+  minutes: number;
+  is_jira: number; // SQLite stores boolean as 0/1
   created_at: string;
 }
 
@@ -43,12 +61,12 @@ export const dbOps = {
   // Logs
   addLog: (log: LogEntry) => {
     return db.prepare(`
-      INSERT INTO logs (identifier, minutes, is_jira, created_at)
-      VALUES (?, ?, ?, ?)
-    `).run(log.identifier, log.minutes, log.is_jira ? 1 : 0, log.created_at);
+      INSERT INTO logs (identifier, label, minutes, is_jira, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(log.identifier, log.label || null, log.minutes, log.is_jira ? 1 : 0, log.created_at);
   },
 
-  getLogs: (sinceISO?: string): { id: number; identifier: string; minutes: number; is_jira: number; created_at: string }[] => {
+  getLogs: (sinceISO?: string): LogDbRow[] => {
     if (sinceISO) {
       return db.prepare("SELECT * FROM logs WHERE created_at >= ? ORDER BY created_at DESC").all(sinceISO) as any;
     }

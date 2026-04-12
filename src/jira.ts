@@ -1,4 +1,5 @@
 import { getAppConfig } from "./config";
+import { Buffer } from "node:buffer";
 
 export interface JiraIssue {
   key: string;
@@ -16,7 +17,9 @@ function getAuthHeader() {
   if (!config.JIRA_EMAIL || !config.JIRA_TOKEN) {
     throw new Error("Jira credentials not configured.");
   }
-  const auth = Buffer.from(`${config.JIRA_EMAIL}:${config.JIRA_TOKEN}`).toString("base64");
+  const email = config.JIRA_EMAIL.trim();
+  const token = config.JIRA_TOKEN.trim();
+  const auth = Buffer.from(`${email}:${token}`).toString("base64");
   return `Basic ${auth}`;
 }
 
@@ -25,7 +28,8 @@ function getBaseUrl() {
   if (!config.JIRA_DOMAIN) {
     throw new Error("Jira domain not configured.");
   }
-  return `https://${config.JIRA_DOMAIN}/rest/api/3`;
+  const domain = config.JIRA_DOMAIN.replace(/^https?:\/\//, '').replace(/\/$/, '').trim();
+  return `https://${domain}/rest/api/3`;
 }
 
 export async function fetchIssueDetails(issueKey: string): Promise<JiraIssue> {
@@ -34,12 +38,16 @@ export async function fetchIssueDetails(issueKey: string): Promise<JiraIssue> {
     headers: {
       Authorization: getAuthHeader(),
       Accept: "application/json",
+      "User-Agent": "KelarCLI/1.0.0",
     },
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Failed to fetch issue ${issueKey}: ${response.status} ${errorText}`);
+    throw new Error(`Failed to fetch issue details.
+URL: ${url}
+Status: ${response.status}
+Response: ${errorText}`);
   }
 
   return response.json() as Promise<JiraIssue>;
@@ -47,7 +55,7 @@ export async function fetchIssueDetails(issueKey: string): Promise<JiraIssue> {
 
 export async function postWorklog(issueKey: string, minutes: number, comment: string, started: string) {
   const url = `${getBaseUrl()}/issue/${issueKey}/worklog`;
-  
+
   const body = {
     comment: {
       type: "doc",
@@ -74,13 +82,17 @@ export async function postWorklog(issueKey: string, minutes: number, comment: st
       Authorization: getAuthHeader(),
       "Content-Type": "application/json",
       Accept: "application/json",
+      "User-Agent": "KelarCLI/1.0.0",
     },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Failed to post worklog to ${issueKey}: ${response.status} ${errorText}`);
+    throw new Error(`Failed to post worklog.
+URL: ${url}
+Status: ${response.status}
+Response: ${errorText}`);
   }
 
   return response.json();
