@@ -2,7 +2,7 @@
 import { render } from "ink";
 import { Command } from "commander";
 import { LogNew } from "./commands/LogNew";
-import { LogView } from "./commands/LogView";
+import { LogView, type SortType } from "./commands/LogView";
 import { LogConfig } from "./commands/LogConfig";
 import { setAppConfig, type ConfigKey, CONFIG_KEYS } from "./config";
 import { Text, Box } from "ink";
@@ -31,8 +31,9 @@ log
 log
   .command("view")
   .argument("[period]", "Period to view (day, week, month)", "day")
-  .action(async (period) => {
-    const { waitUntilExit } = render(<LogView period={period} />);
+  .option("-s, --sort <type>", "Sort by (longest, shortest, newest, oldest)", "oldest")
+  .action(async (period, options) => {
+    const { waitUntilExit } = render(<LogView period={period} sortBy={options.sort as SortType} />);
     await waitUntilExit();
   });
 

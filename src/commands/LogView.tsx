@@ -8,14 +8,17 @@ import { formatMinutes } from "../utils";
 import { searchIssues, fetchIssueWorklogs } from "../jira";
 import { getAppConfig } from "../config";
 
+export type SortType = "longest" | "shortest" | "newest" | "oldest";
+
 interface Props {
   period?: string; // "day", "week", "month"
+  sortBy?: SortType;
 }
 
 
 type ViewStatus = "IDLE" | "SYNCING" | "SUCCESS" | "ERROR";
 
-export const LogView: React.FC<Props> = ({ period = "day" }) => {
+export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) => {
   const [status, setStatus] = useState<ViewStatus>("IDLE");
   const [logs, setLogs] = useState<import("../db").LogDbRow[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -108,9 +111,19 @@ export const LogView: React.FC<Props> = ({ period = "day" }) => {
     }
   }
 
-  const sortedLogs = [...logs].sort((a, b) => 
-    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
+  const sortedLogs = [...logs].sort((a, b) => {
+    const timeA = new Date(a.created_at).getTime();
+    const timeB = new Date(b.created_at).getTime();
+
+    switch (sortBy) {
+      case "newest": return timeB - timeA;
+      case "longest": return b.minutes - a.minutes;
+      case "shortest": return a.minutes - b.minutes;
+      case "oldest":
+      default:
+        return timeA - timeB;
+    }
+  });
 
   const data = sortedLogs.map(log => ({
     Date: format(new Date(log.created_at), "dd MMM"),
