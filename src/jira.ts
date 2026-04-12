@@ -2,6 +2,7 @@ import { getAppConfig } from "./config";
 import { Buffer } from "node:buffer";
 
 export interface JiraIssue {
+  id: string;
   key: string;
   fields: {
     summary: string;
@@ -9,6 +10,29 @@ export interface JiraIssue {
       accountId: string;
       displayName: string;
     } | null;
+  };
+}
+
+export interface JiraComment {
+  content: {
+    content: {
+      text: string;
+      type: string;
+    }[];
+    type: string;
+  }[];
+  type: string;
+  version: number;
+}
+
+export interface JiraWorklog {
+  id: string;
+  comment: JiraComment | null;
+  started: string;
+  timeSpentSeconds: number;
+  author: {
+    accountId: string;
+    displayName: string;
   };
 }
 
@@ -53,7 +77,7 @@ Response: ${errorText}`);
   return response.json() as Promise<JiraIssue>;
 }
 
-export async function postWorklog(issueKey: string, minutes: number, comment: string, started: string) {
+export async function postWorklog(issueKey: string, minutes: number, comment: string, started: string): Promise<JiraWorklog> {
   const url = `${getBaseUrl()}/issue/${issueKey}/worklog`;
 
   const body = {
@@ -95,5 +119,55 @@ Status: ${response.status}
 Response: ${errorText}`);
   }
 
-  return response.json();
+  return response.json() as Promise<JiraWorklog>;
+}
+
+/**
+ * Searches for issues using JQL
+ */
+export async function searchIssues(jql: string): Promise<JiraIssue[]> {
+  const url = `${getBaseUrl()}/search/jql`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: getAuthHeader(),
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "User-Agent": "KelarCLI/1.0.0",
+    },
+    body: JSON.stringify({
+      jql,
+      fields: ["summary", "assignee"]
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`JQL Search failed: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json() as { issues: JiraIssue[] };
+  return data.issues;
+}
+
+/**
+ * Fetches all worklogs for a specific issue
+ */
+export async function fetchIssueWorklogs(issueIdOrKey: string): Promise<JiraWorklog[]> {
+  const url = `${getBaseUrl()}/issue/${issueIdOrKey}/worklog`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: getAuthHeader(),
+      Accept: "application/json",
+      "User-Agent": "KelarCLI/1.0.0",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch worklogs for ${issueIdOrKey}: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json() as { worklogs: JiraWorklog[] };
+  return data.worklogs;
 }

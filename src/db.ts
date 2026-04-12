@@ -20,17 +20,20 @@ db.run(`
     identifier TEXT NOT NULL,
     label TEXT,
     minutes INTEGER NOT NULL,
+    jira_worklog_id TEXT UNIQUE,
     is_jira INTEGER NOT NULL,
     created_at TEXT NOT NULL
   )
 `);
 
-// Migration: Add label column if it doesn't exist
+// Migration: Add columns if they don't exist
 try {
   db.run("ALTER TABLE logs ADD COLUMN label TEXT");
-} catch {
-  // Column already exists or other error we can ignore for now
-}
+} catch {}
+try {
+  db.run("ALTER TABLE logs ADD COLUMN jira_worklog_id TEXT");
+  db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_worklog_id ON logs(jira_worklog_id)");
+} catch {}
 
 db.run(`
   CREATE TABLE IF NOT EXISTS config (
@@ -44,6 +47,7 @@ export interface LogEntry {
   identifier: string;
   label?: string;
   minutes: number;
+  jira_worklog_id?: string;
   is_jira: boolean;
   created_at: string;
 }
@@ -53,6 +57,7 @@ export interface LogDbRow {
   identifier: string;
   label: string | null;
   minutes: number;
+  jira_worklog_id: string | null;
   is_jira: number; // SQLite stores boolean as 0/1
   created_at: string;
 }
@@ -61,9 +66,14 @@ export const dbOps = {
   // Logs
   addLog: (log: LogEntry) => {
     return db.prepare(`
-      INSERT INTO logs (identifier, label, minutes, is_jira, created_at)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(log.identifier, log.label || null, log.minutes, log.is_jira ? 1 : 0, log.created_at);
+      INSERT INTO logs (identifier, label, minutes, jira_worklog_id, is_jira, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(jira_worklog_id) DO UPDATE SET
+        identifier = excluded.identifier,
+        label = excluded.label,
+        minutes = excluded.minutes,
+        created_at = excluded.created_at
+    `).run(log.identifier, log.label || null, log.minutes, log.jira_worklog_id || null, log.is_jira ? 1 : 0, log.created_at);
   },
 
   getLogs: (sinceISO?: string): LogDbRow[] => {
@@ -71,6 +81,16 @@ export const dbOps = {
       return db.prepare("SELECT * FROM logs WHERE created_at >= ? ORDER BY created_at DESC").all(sinceISO) as any;
     }
     return db.prepare("SELECT * FROM logs ORDER BY created_at DESC").all() as any;
+  },
+
+  deleteLogsByWorklogIds: (ids: string[]) => {
+    if (ids.length === 0) return;
+    const placeholders = ids.map(() => "?").join(",");
+    return db.prepare(`DELETE FROM logs WHERE jira_worklog_id IN (${placeholders})`).run(...ids);
+  },
+
+  clearAllLogsInRange: (sinceISO: string) => {
+    return db.prepare("DELETE FROM logs WHERE created_at >= ?").run(sinceISO);
   },
 
   // Config

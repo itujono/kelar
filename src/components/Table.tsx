@@ -4,9 +4,10 @@ import { Box, Text } from "ink";
 interface TableProps<T> {
   data: T[];
   columns?: (keyof T)[];
+  compact?: boolean;
 }
 
-export function Table<T extends Record<string, any>>({ data, columns }: TableProps<T>) {
+export function Table<T extends Record<string, any>>({ data, columns, compact }: TableProps<T>) {
   if (data.length === 0) return null;
 
   const allColumns = columns || (Object.keys(data[0] || {}) as (keyof T)[]);
@@ -77,7 +78,7 @@ export function Table<T extends Record<string, any>>({ data, columns }: TablePro
             ))}
           </Box>
           {/* Internal Divider (between rows) */}
-          {rowIndex < data.length - 1 ? renderLine("├", "┼", "┤", "─") : null}
+          {(!compact && rowIndex < data.length - 1) ? renderLine("├", "┼", "┤", "─") : null}
         </React.Fragment>
       ))}
 

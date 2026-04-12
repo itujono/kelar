@@ -71,12 +71,13 @@ export const LogNew: React.FC<Props> = ({ identifier, time, initialComment }) =>
 
       setStatus("SYNCING");
 
-      await postWorklog(targetIssueKey, minutes, worklogComment, started);
+      const jiraResponse = await postWorklog(targetIssueKey, minutes, worklogComment, started);
 
       dbOps.addLog({
         identifier: identifier,
         label: label,
         minutes,
+        jira_worklog_id: jiraResponse.id,
         is_jira: isJiraKey,
         created_at: started,
       });
