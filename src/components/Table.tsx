@@ -5,9 +5,10 @@ interface TableProps<T> {
   data: T[];
   columns?: (keyof T)[];
   compact?: boolean;
+  renderCell?: (column: keyof T, value: any, row: T) => React.ReactNode;
 }
 
-export function Table<T extends Record<string, any>>({ data, columns, compact }: TableProps<T>) {
+export function Table<T extends Record<string, any>>({ data, columns, compact, renderCell }: TableProps<T>) {
   if (data.length === 0) return null;
 
   const allColumns = columns || (Object.keys(data[0] || {}) as (keyof T)[]);
@@ -71,7 +72,9 @@ export function Table<T extends Record<string, any>>({ data, columns, compact }:
             {allColumns.map((col, i) => (
               <React.Fragment key={String(col)}>
                 <Box width={colWidths[i]} paddingX={1}>
-                  <Text>{row[col] !== undefined ? String(row[col]) : ""}</Text>
+                  <Text>
+                    {renderCell ? renderCell(col, row[col], row) : (row[col] ?? "")}
+                  </Text>
                 </Box>
                 <Text color="dim">│</Text>
               </React.Fragment>

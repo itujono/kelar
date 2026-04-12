@@ -158,7 +158,17 @@ export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) 
 
       {logs.length > 0 ? (
         <>
-          <Table data={data} compact />
+          <Table 
+            data={data} 
+            compact 
+            renderCell={(col, val, row) => {
+              const isPersonal = row.Type === "Personal";
+              if (isPersonal && (col === "Identifier" || col === "Type")) {
+                return <Text color="green">{val}</Text>;
+              }
+              return val;
+            }}
+          />
           <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1}>
             <Text bold>Grand Total: </Text>
             <Text color="yellow">{formatMinutes(totalMinutesAll)}</Text>
