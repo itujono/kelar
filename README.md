@@ -69,6 +69,16 @@ The `view` command mirrors Jira to your local database and caches the result for
 kelar log view [period]
 ```
 
+#### Interactive Filtering
+The dashboard supports real-time, interactive filtering:
+1.  **Toggle**: Press **`/`** while viewing any list to open the filter bar.
+2.  **Live Search**: Filter by **Issue Key**, **Summary**, or **Type** (Jira/Personal) instantly.
+3.  **Shortcuts**:
+    -   **`Enter`**: Commit the filter and keep the view.
+    -   **`Esc`**: Close the filter and reset the table.
+
+The **Grand Total** and **Entry Count** update dynamically as you type!
+
 #### Advanced Sorting
 Use the `--sort` (or `-s`) flag to organize your table:
 ```bash

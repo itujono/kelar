@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Text, Box } from "ink";
+import { Text, Box, useInput } from "ink";
+import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
 import { startOfDay, startOfWeek, startOfMonth, format } from "date-fns";
 import { Table } from "../components/Table";
@@ -22,6 +23,32 @@ export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) 
   const [status, setStatus] = useState<ViewStatus>("IDLE");
   const [logs, setLogs] = useState<import("../db").LogDbRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [filterQuery, setFilterQuery] = useState("");
+  const [isFiltering, setIsFiltering] = useState(false);
+
+  useInput((input, key) => {
+    if (input === "/" && !isFiltering) {
+      setIsFiltering(true);
+      setFilterQuery("");
+      return;
+    }
+
+    if (key.escape) {
+      setIsFiltering(false);
+      setFilterQuery("");
+    }
+
+    // 3. Clear line on Ctrl+U (\u0015 is the raw code for Ctrl+U)
+    if (key.ctrl && (input === "u" || input === "\u0015")) {
+      setFilterQuery("");
+    }
+  });
+
+  const handleFilterChange = (val: string) => {
+    // Sanitize: strip any leading slashes that leaked from the toggle key
+    const sanitized = val.replace(/^\/+/, "");
+    setFilterQuery(sanitized);
+  };
 
   useEffect(() => {
     sync();
@@ -118,7 +145,18 @@ export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) 
     }
   }
 
-  const sortedLogs = [...logs].sort((a, b) => {
+  const filteredLogs = logs.filter(log => {
+    if (!filterQuery) return true;
+    const search = filterQuery.toLowerCase();
+    const logType = log.is_jira ? "jira" : "personal";
+    return (
+      log.identifier.toLowerCase().includes(search) ||
+      (log.label || "").toLowerCase().includes(search) ||
+      logType.includes(search)
+    );
+  });
+
+  const sortedLogs = [...filteredLogs].sort((a, b) => {
     const timeA = new Date(a.created_at).getTime();
     const timeB = new Date(b.created_at).getTime();
 
@@ -140,7 +178,7 @@ export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) 
     Time: formatMinutes(log.minutes)
   }));
 
-  const totalMinutesAll = logs.reduce((sum, log) => sum + log.minutes, 0);
+  const totalMinutesAll = filteredLogs.reduce((sum, log) => sum + log.minutes, 0);
 
   if (status === "ERROR") {
     return (
@@ -165,9 +203,9 @@ export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) 
 
       {logs.length > 0 ? (
         <>
-          <Table 
-            data={data} 
-            compact 
+          <Table
+            data={data}
+            compact
             renderCell={(col, val, row) => {
               const isPersonal = row.Type === "Personal";
               if (isPersonal && (col === "Identifier" || col === "Type")) {
@@ -179,12 +217,46 @@ export const LogView: React.FC<Props> = ({ period = "day", sortBy = "oldest" }) 
           <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1}>
             <Text bold>Grand Total: </Text>
             <Text color="yellow">{formatMinutes(totalMinutesAll)}</Text>
-            <Text> ({totalMinutesAll}m)</Text>
+            <Text color="dim"> ({totalMinutesAll}m) | </Text>
+            <Text color="cyan">{filteredLogs.length} entries</Text>
           </Box>
         </>
       ) : (
         status !== "SYNCING" && <Text color="dim">No logs found for this period in Jira.</Text>
       )}
+
+      <Box marginTop={1} flexDirection="column">
+        {isFiltering && (
+          <Box borderStyle="single" borderColor="yellow" paddingX={1} marginBottom={1} flexDirection="column">
+            <Box>
+              <Box backgroundColor="yellow" paddingX={1} marginRight={1}>
+                <Text bold color="black"> FILTER MODE </Text>
+              </Box>
+              <TextInput
+                value={filterQuery}
+                onChange={handleFilterChange}
+                onSubmit={() => setIsFiltering(false)}
+                placeholder="Start typing to filter..."
+              />
+            </Box>
+            <Box marginTop={1}>
+              <Text color="yellow"> {filteredLogs.length} matches | </Text>
+              <Text bold color="cyan">Enter</Text>
+              <Text color="dim"> to keep | </Text>
+              <Text bold color="cyan">Esc</Text>
+              <Text color="dim"> to reset</Text>
+            </Box>
+          </Box>
+        )}
+
+        {!isFiltering && status !== "SYNCING" && (
+          <Box>
+            <Text color="dim">Press </Text>
+            <Text bold color="cyan">/</Text>
+            <Text color="dim"> to filter tasks</Text>
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 };
