@@ -67,11 +67,12 @@ export async function fetchIssueDetails(issueKey: string): Promise<JiraIssue> {
   });
 
   if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error(`Ticket "${issueKey}" not found. Please check the key and try again.`);
+    }
+    
     const errorText = await response.text();
-    throw new Error(`Failed to fetch issue details.
-URL: ${url}
-Status: ${response.status}
-Response: ${errorText}`);
+    throw new Error(`Failed to fetch issue details (${response.status}): ${errorText}`);
   }
 
   return response.json() as Promise<JiraIssue>;
