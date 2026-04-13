@@ -138,12 +138,13 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
         <Text bold color="cyan">Bitbucket PR Observability {showAll ? "(ALL)" : "(MINE)"}</Text>
       </Box>
 
-      <Box flexDirection="row">
+      <Box flexDirection="row" minHeight={20}>
         <Box flexGrow={1} marginRight={2}>
           <PRTable prs={filteredPrs} selectedIndex={selectedIndex} />
         </Box>
         {activePR && <PRDetailPane pr={activePR} />}
       </Box>
+
 
       <Box marginTop={1} flexDirection="column">
         {isFiltering ? (

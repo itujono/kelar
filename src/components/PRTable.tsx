@@ -37,7 +37,8 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
   ];
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="dim">
+    <Box flexDirection="column" borderStyle="round" borderColor="dim" flexGrow={1}>
+
       {/* Header */}
       <Box paddingX={1} marginBottom={0}>
         {columns.map((col) => (
