@@ -85,7 +85,7 @@ kelar pr list --all
 ```
 
 #### Dual-Pane Dashboard
-- **Table View**: Browse PRs with relative timestamps (`~ 2 hours`), approval counts, and health metrics (`FB` for comments, `UN` for open tasks).
+- **Table View**: Browse PRs with relative timestamps (`~ 2 hours`), approval counts, and health metrics (`FB` for comments, `UN` for open tasks). Includes a personal **"Me"** column tracking your approval status on team PRs.
 - **Detail Pane**: Get a deep-dive into the selected PR:
     - **Velocity Metrics**: Track **Lead Time** and **Pick-up Latency** (time to first peer interaction).
     - **Reviewer Status**: See who has approved (`✓`) vs. who is still pending (`○`).
@@ -93,9 +93,11 @@ kelar pr list --all
 - **Interactive Controls**:
     - **`↑/↓`**: Navigate the list.
     - **`/`**: Enter **Filter Mode** to search by Title, Branch, or ID.
+    - **`s`**: Open **Sort Menu** (Newest, Oldest, Lead Time, Pickup Latency).
     - **`o`**: Instantly **Open** the PR in your default browser.
     - **`c`**: **Copy** the source branch name to your clipboard.
     - **`r`**: **Refetch** latest data from Bitbucket.
+
 
 ## Data Storage & Security
 
