@@ -40,13 +40,14 @@ export interface BitbucketPR {
   };
   comment_count: number;
   task_count: number;
-  participants: {
+  participants?: {
     user: BitbucketUser;
     role: "REVIEWER" | "PARTICIPANT";
     approved: boolean;
     state: "null" | "approved" | "changes_requested";
   }[];
 }
+
 
 export interface BitbucketActivity {
   comment?: {
@@ -82,13 +83,15 @@ export interface BitbucketStatus {
 }
 
 const getAuthHeader = () => {
-  const { BITBUCKET_USERNAME, BITBUCKET_APP_PASSWORD } = getBitbucketConfig();
-  if (!BITBUCKET_USERNAME || !BITBUCKET_APP_PASSWORD) {
-    throw new Error("Bitbucket configuration is missing.");
+  const { BITBUCKET_EMAIL, BITBUCKET_TOKEN } = getBitbucketConfig();
+  if (!BITBUCKET_EMAIL || !BITBUCKET_TOKEN) {
+    throw new Error("Bitbucket configuration is missing (EMAIL or TOKEN).");
   }
-  const credentials = Buffer.from(`${BITBUCKET_USERNAME}:${BITBUCKET_APP_PASSWORD}`).toString("base64");
+  const credentials = Buffer.from(`${BITBUCKET_EMAIL}:${BITBUCKET_TOKEN}`).toString("base64");
   return `Basic ${credentials}`;
 };
+
+
 
 const getBaseUrl = () => {
   const { BITBUCKET_WORKSPACE, BITBUCKET_REPO_SLUG } = getBitbucketConfig();

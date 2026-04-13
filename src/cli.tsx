@@ -136,8 +136,10 @@ prConfig
 prConfig
   .command("set")
   .description("Update a Bitbucket configuration value")
-  .argument("<key>", "Config key (BITBUCKET_USERNAME, BITBUCKET_APP_PASSWORD, BITBUCKET_WORKSPACE, BITBUCKET_REPO_SLUG)")
+  .argument("<key>", "Config key (BITBUCKET_EMAIL, BITBUCKET_USERNAME, BITBUCKET_TOKEN, BITBUCKET_WORKSPACE, BITBUCKET_REPO_SLUG)")
   .argument("<value>", "New value")
+
+
   .action((key, value) => {
     const upperKey = key.toUpperCase() as BitbucketConfigKey;
     if (BITBUCKET_CONFIG_KEYS[upperKey]) {

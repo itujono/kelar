@@ -43,7 +43,8 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
         const authorName = pr.author.display_name.split(" ")[0] || "Unknown";
 
         // Approval count
-        const approvals = pr.participants.filter(p => p.approved).length;
+        const approvals = pr.participants?.filter(p => p.approved).length || 0;
+
         const status = `✓ ${approvals}`;
 
         return (

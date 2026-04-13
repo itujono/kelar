@@ -50,7 +50,7 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
 
   return (
     <Box flexDirection="column" paddingX={2} width={50} borderStyle="single" borderColor="cyan">
-      <Text bold color="white" underline>详细信息 (PR #{pr.id})</Text>
+      <Text bold color="white" underline>Details (PR #{pr.id})</Text>
 
       <Box flexDirection="column" marginTop={1}>
         <Text bold color="yellow">Velocity Metrics</Text>
@@ -68,7 +68,7 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
 
       <Box flexDirection="column" marginTop={1}>
         <Text bold color="yellow">Reviewers</Text>
-        {pr.participants.filter(p => p.role === "REVIEWER").map(reviewer => (
+        {pr.participants?.filter(p => p.role === "REVIEWER").map(reviewer => (
           <Box key={reviewer.user.account_id} paddingLeft={1}>
             <Text color={reviewer.approved ? "green" : "dim"}>
               {reviewer.approved ? "✓" : "○"} {reviewer.user.display_name}
@@ -76,7 +76,6 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
           </Box>
         ))}
       </Box>
-
       <Box flexDirection="column" marginTop={1}>
         <Text bold color="yellow">Tasks & Pipelines</Text>
         <Box paddingLeft={1}>

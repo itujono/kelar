@@ -11,11 +11,14 @@ export const CONFIG_KEYS = {
 } as const;
  
 export const BITBUCKET_CONFIG_KEYS = {
+  BITBUCKET_EMAIL: "BITBUCKET_EMAIL",
   BITBUCKET_USERNAME: "BITBUCKET_USERNAME",
-  BITBUCKET_APP_PASSWORD: "BITBUCKET_APP_PASSWORD",
+  BITBUCKET_TOKEN: "BITBUCKET_TOKEN",
   BITBUCKET_WORKSPACE: "BITBUCKET_WORKSPACE",
   BITBUCKET_REPO_SLUG: "BITBUCKET_REPO_SLUG",
 } as const;
+
+
 
 
 export type ConfigKey = keyof typeof CONFIG_KEYS;
@@ -68,11 +71,13 @@ export function isConfigValid(): { valid: boolean; missing: string[] } {
 
 export function isBitbucketConfigValid(): { valid: boolean; missing: string[] } {
   const required: BitbucketConfigKey[] = [
-    "BITBUCKET_USERNAME",
-    "BITBUCKET_APP_PASSWORD",
+    "BITBUCKET_EMAIL",
+    "BITBUCKET_TOKEN",
     "BITBUCKET_WORKSPACE",
     "BITBUCKET_REPO_SLUG",
   ];
+
+
 
   const missing = required.filter(k => !dbOps.getConfig(k));
   return {
