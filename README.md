@@ -1,17 +1,14 @@
 # Kelar CLI 🍗
 
-**Kelar** is a fast, terminal-based Jira worklog manager built with **Bun**, **TypeScript**, and **Ink**. It provides a premium TUI (Terminal User Interface) to manage your productivity, automatically mirroring your Jira Cloud worklogs to a local SQLite database with smart caching.
+**Kelar** is a fast, terminal-based Jira and Bitbucket manager built with **Bun**, **TypeScript**, and **Ink**. It provides a premium TUI (Terminal User Interface) to manage your productivity, tracking worklogs and pull request health with real-time analytics.
 
 ## Features
 
-- **Smart Time Parsing**: Supports standard Jira formats like `1h`, `45m`, or `1h 30m`.
-- **Automatic Rounding**: Automatically rounds every entry up to the nearest 5-minute increment (e.g., `42m` → `45m`).
-- **Intelligent Sync & Mirror**:
-    - **Persistence**: Maintains a local SQLite database (`~/.kelar/kelar.db`).
-    - **Smart Caching**: Syncs with Jira every 5 minutes; repeated views within that window load instantly from local storage.
-    - **Cloud First**: Mirroring architecture ensures your local dashboard and Jira are always in sync.
-- **Validation**: Automatically validates Jira ticket existence and provides friendly warnings if a ticket is unassigned or assigned to someone else.
-- **Personal Log Highlighting**: Non-Jira logs are color-coded in **green** for easy differentiation in summaries.
+- **Jira Work Logs**: Smart time parsing (`1h 30m`), automatic rounding, and monthly goal tracking.
+- **Bitbucket PR Observability**: Track pull requests, approvals, feedback cycles, and velocity metrics directly in the terminal.
+- **Intelligent Sync & Mirror**: Maintains a local SQLite database (`~/.kelar/kelar.db`) with smart caching.
+- **Capture Mode**: Generate high-fidelity HTML dashboards for your work progress.
+- **Privacy First**: All credentials and data stay on your machine in a local SQLite database.
 
 ## Installation
 
@@ -28,99 +25,88 @@
 
 ## Configuration
 
-Set up your Jira credentials and work targets before your first log:
-
+### Work Logs (Jira)
 ```bash
 kelar log config set JIRA_DOMAIN your-domain.atlassian.net
 kelar log config set JIRA_EMAIL your@email.com
 kelar log config set JIRA_TOKEN your_api_token
 kelar log config set JIRA_ACCOUNT_ID your_jira_account_id
 kelar log config set PERSONAL_TICKET_ID IMM-123  # Target for personal work strings
-kelar log config set MONTHLY_TARGET_HOURS 180    # Your monthly hours quota (Default: 180)
-kelar log config set LAST_CALCULATION_DAY 25     # Deadline day each month (Default: 25th)
+kelar log config set MONTHLY_TARGET_HOURS 180    # Your monthly hours quota
+kelar log config set LAST_CALCULATION_DAY 25     # Deadline day each month
 ```
 
-View current config with `kelar log config view` or simply `kelar log config`.
+### Pull Requests (Bitbucket)
+```bash
+kelar pr config set BITBUCKET_EMAIL your@email.com
+kelar pr config set BITBUCKET_TOKEN your_atlassian_api_token
+kelar pr config set BITBUCKET_WORKSPACE workspace-slug
+kelar pr config set BITBUCKET_REPO_SLUG repo-slug
+kelar pr config set BITBUCKET_USERNAME your_username  # For "MINE" filter
+```
 
 ## Usage
 
-### Logging New Work
+### Work Logs
 
-Kelar routes logs based on the identifier provided:
-- **Jira Keys**: (e.g., `IMM-123`) Validates the ticket exists and matches your account.
-- **Personal Strings**: (e.g., "Deep Work") Logs to your `PERSONAL_TICKET_ID`.
-
+#### Logging New Work
 ```bash
-# Log with a comment (Quotes needed for spaces)
+# Log with a comment
 kelar log new IMM-123 '1h 30m' "Refactoring the API"
 
 # Log without a comment (It will prompt you!)
 kelar log new IMM-123 45m
-
-# Pro-tip: No space in time avoids the need for quotes
-kelar log new "Team Sync" 1h45m
 ```
 
-### Viewing Summaries
-
-The `view` command mirrors Jira to your local database and caches the result for 5 minutes.
-
+#### Viewing Summaries
 ```bash
 # Available periods: day, week, month
-# Week starts every Monday; Month starts on the 1st.
-kelar log view [period]
+kelar log view month
 ```
+- **Goal Tracking**: Shows progress bars, deadline countdowns, and percentages.
+- **Interactive Filtering**: Press **`/`** to filter by ticket, summary, or type.
 
-#### Monthly Goal Tracking
-When viewing the `month` period, Kelar provides automated progress tracking:
-- **Progress Bar**: A visual indicator of your `MONTHLY_TARGET_HOURS` completion.
-- **Deadline Countdown**: Shows days remaining until your `LAST_CALCULATION_DAY`.
-- **Dynamic Percentage**: Real-time calculation of your reach against the goal.
-
-#### Interactive Filtering
-The dashboard supports real-time, interactive filtering:
-1.  **Toggle**: Press **`/`** while viewing any list to open the filter bar.
-2.  **Live Search**: Filter by **Issue Key**, **Summary**, or **Type** (Jira/Personal) instantly.
-3.  **Shortcuts**:
-    -   **`Enter`**: Commit the filter and keep the view.
-    -   **`Esc`**: Close the filter and reset the table.
-
-The **Grand Total**, **Progress Bar**, and **Entry Count** update dynamically as you type!
-
-#### Advanced Sorting
-Use the `--sort` (or `-s`) flag to organize your table:
+#### Capturing Reports
 ```bash
-# See your week's biggest tasks first
-kelar log view week --sort longest
-
-# See newest activity at the top
-kelar log view month -s newest
-
-# View options: oldest (default), newest, longest, shortest
-```
-
-### Capturing Reports
-When you need to share your work progress with your manager or CTO, use the `capture` command. It generates a high-fidelity **HTML Dashboard** snapshot of your logs, goal progress, and detailed work breakdown.
-
-```bash
-# Generate a beautiful monthly report
 kelar log capture month
 ```
+Generates a styled `kelar-report-month-YYYY-MM-DD.html` file for sharing with management.
 
-- **Dashboards**: Creates a styled `kelar-report-month-YYYY-MM-DD.html` file.
-- **Reporting Ready**: Open in any browser to print as PDF or take a high-res screenshot.
-- **Clean Performance**: Runs a silent sync and provides a simple confirmation of the generated file.
+### Pull Requests
+
+The `pr` command provides a real-time view of your team's code review status.
+
+```bash
+# View your active PRs
+kelar pr list
+
+# View all open PRs in the repository
+kelar pr list --all
+```
+
+#### Dual-Pane Dashboard
+- **Table View**: Browse PRs with relative timestamps (`~ 2 hours`), approval counts, and health metrics (`FB` for comments, `UN` for open tasks).
+- **Detail Pane**: Get a deep-dive into the selected PR:
+    - **Velocity Metrics**: Track **Lead Time** and **Pick-up Latency** (time to first peer interaction).
+    - **Reviewer Status**: See who has approved (`✓`) vs. who is still pending (`○`).
+    - **Peer Feedback**: Detailed breakdown of **Resolved** vs. **Unresolved** comments from your peers.
+- **Interactive Controls**:
+    - **`↑/↓`**: Navigate the list.
+    - **`/`**: Enter **Filter Mode** to search by Title, Branch, or ID.
+    - **`o`**: Instantly **Open** the PR in your default browser.
+    - **`c`**: **Copy** the source branch name to your clipboard.
+    - **`r`**: **Refetch** latest data from Bitbucket.
 
 ## Data Storage & Security
 
-Kelar is designed to be safe for open-source contribution:
-- **Local Database**: All worklogs and configuration (including your Jira Token) are stored in a local SQLite database at `~/.kelar/kelar.db`.
-- **Safe for GitHub**: Since your data is stored in your local machine rather than the project folder, you can safely commit and push your code to GitHub without accidentally leaking your API tokens.
-- **Privacy**: The local SQLite database acts as a private mirror; no data is shared outside of your machine and your designated Jira Cloud domain.
+- **Local Database**: All worklogs and configuration (including your tokens) are stored in `~/.kelar/kelar.db`.
+- **Safe for Contribution**: Data is stored outside the project folder, so you can safely push code without leaking secrets.
+- **Privacy**: No data is shared outside of your machine and your designated Atlassian domains.
 
 ## Technical Details
 
-- **Database**: `~/.kelar/kelar.db`
-- **Timezone**: Syncs with Jira using a fixed `+0700` offset.
-- **JQL Search**: Utilizes the modern `POST /rest/api/3/search/jql` endpoint.
-- **UI Engine**: Ink-based flexbox layouts with custom Unicode grid rendering.
+- **Runtime**: Bun
+- **UI Engine**: Ink-based flexbox layouts
+- **Database**: SQLite (via `bun:sqlite`)
+- **API**: Jira Cloud & Bitbucket Cloud REST APIs (v3/v2)
+- **Timezone**: Syncs using a fixed `+0700` offset.

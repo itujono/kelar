@@ -1,22 +1,34 @@
 import React, { useState } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import TextInput from "ink-text-input";
-import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery, useQueries } from "@tanstack/react-query";
 import Spinner from "ink-spinner";
 import { PRTable } from "../components/PRTable";
 import { PRDetailPane } from "../components/PRDetailPane";
-import { fetchPRs, queryClient } from "../bitbucket";
+import { fetchPRs, fetchPRActivity, calculateVelocity, queryClient } from "../bitbucket";
 import { isBitbucketConfigValid } from "../config";
 
 interface PRViewProps {
   showAll?: boolean;
 }
 
+type PRSortType = "newest" | "oldest" | "longest" | "shortest";
+
 const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [filterQuery, setFilterQuery] = useState("");
   const [isFiltering, setIsFiltering] = useState(false);
+  const [sortBy, setSortBy] = useState<PRSortType>("newest");
+  const [isSorting, setIsSorting] = useState(false);
+  const [sortIndex, setSortIndex] = useState(0);
+
+  const sortOptions: { label: string; value: PRSortType }[] = [
+    { label: "Newest", value: "newest" },
+    { label: "Oldest", value: "oldest" },
+    { label: "Longest Lead Time", value: "longest" },
+    { label: "Shortest Pickup Latency", value: "shortest" },
+  ];
 
   const { data: prs, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["prs", showAll],
@@ -33,9 +45,63 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
     );
   }) || [];
 
-  const activePR = filteredPrs[selectedIndex];
+  // Parallel activity fetching for velocity-based sorting
+  const activityQueries = useQueries({
+    queries: filteredPrs.map(pr => ({
+      queryKey: ["pr", pr.id, "activity"],
+      queryFn: () => fetchPRActivity(pr.id),
+      enabled: sortBy === "shortest" || isSorting, // Prefetch when in sort mode
+      staleTime: 1000 * 60 * 10,
+    }))
+  });
+
+  const sortedPrs = [...filteredPrs].sort((a, b) => {
+    const timeA = new Date(a.created_on).getTime();
+    const timeB = new Date(b.created_on).getTime();
+
+    if (sortBy === "newest") return timeB - timeA;
+    if (sortBy === "oldest" || sortBy === "longest") return timeA - timeB;
+    
+    if (sortBy === "shortest") {
+      const actA = queryClient.getQueryData(["pr", a.id, "activity"]) as any[];
+      const actB = queryClient.getQueryData(["pr", b.id, "activity"]) as any[];
+      const velA = actA ? calculateVelocity(a, actA).pickupLatency : Infinity;
+      const velB = actB ? calculateVelocity(b, actB).pickupLatency : Infinity;
+      return (velA ?? Infinity) - (velB ?? Infinity);
+    }
+    
+    return 0;
+  });
+
+  const activePR = sortedPrs[selectedIndex];
 
   useInput((input, key) => {
+    if (isSorting) {
+      if (key.upArrow) {
+        setSortIndex(prev => Math.max(0, prev - 1));
+        return;
+      }
+      if (key.downArrow) {
+        setSortIndex(prev => Math.min(sortOptions.length - 1, prev + 1));
+        return;
+      }
+      if (key.return) {
+        const option = sortOptions[sortIndex];
+        if (option) {
+          setSortBy(option.value);
+        }
+        setIsSorting(false);
+        setSelectedIndex(0);
+        return;
+      }
+
+      if (key.escape) {
+        setIsSorting(false);
+        return;
+      }
+      return;
+    }
+
     if (input === "/" && !isFiltering) {
       setIsFiltering(true);
       setFilterQuery("");
@@ -43,10 +109,17 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
       return;
     }
 
+    if (input === "s" && !isFiltering) {
+      setIsSorting(true);
+      return;
+    }
+
     if (key.escape) {
-      setIsFiltering(false);
-      setFilterQuery("");
-      setSelectedIndex(0);
+      if (isFiltering) {
+        setIsFiltering(false);
+        setFilterQuery("");
+        setSelectedIndex(0);
+      }
       return;
     }
 
@@ -61,7 +134,7 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
     }
 
     if (key.downArrow) {
-      setSelectedIndex((prev) => Math.min(filteredPrs.length - 1, prev + 1));
+      setSelectedIndex((prev) => Math.min(sortedPrs.length - 1, prev + 1));
     }
 
     if (input === "r") {
@@ -88,6 +161,7 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
     setFilterQuery(sanitized);
     setSelectedIndex(0);
   };
+
 
 
   if (!isBitbucketConfigValid().valid) {
@@ -136,18 +210,41 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
     <Box flexDirection="column" padding={1}>
       <Box marginBottom={1}>
         <Text bold color="cyan">Bitbucket PR Observability {showAll ? "(ALL)" : "(MINE)"}</Text>
+        <Text color="dim"> | sorted by: </Text>
+        <Text color="yellow">{sortBy}</Text>
       </Box>
 
       <Box flexDirection="row" minHeight={20}>
         <Box flexGrow={1} marginRight={2}>
-          <PRTable prs={filteredPrs} selectedIndex={selectedIndex} />
+          <PRTable prs={sortedPrs} selectedIndex={selectedIndex} showMeColumn={showAll} />
         </Box>
+
         {activePR && <PRDetailPane pr={activePR} />}
       </Box>
 
 
       <Box marginTop={1} flexDirection="column">
-        {isFiltering ? (
+        {isSorting ? (
+          <Box borderStyle="single" borderColor="cyan" paddingX={1} marginBottom={1} flexDirection="column">
+            <Box backgroundColor="cyan" paddingX={1} marginRight={1} marginBottom={1} width={12}>
+              <Text bold color="black"> SORT BY </Text>
+            </Box>
+            {sortOptions.map((opt, i) => (
+              <Box key={opt.value}>
+                <Text color={i === sortIndex ? "cyan" : "dim"}>
+                  {i === sortIndex ? "❯" : " "} {opt.label}
+                  {sortBy === opt.value ? " (active)" : ""}
+                </Text>
+              </Box>
+            ))}
+            <Box marginTop={1}>
+              <Text bold color="cyan">Enter</Text>
+              <Text color="dim"> to apply | </Text>
+              <Text bold color="cyan">Esc</Text>
+              <Text color="dim"> to close</Text>
+            </Box>
+          </Box>
+        ) : isFiltering ? (
           <Box borderStyle="single" borderColor="yellow" paddingX={1} marginBottom={1} flexDirection="column">
             <Box>
               <Box backgroundColor="yellow" paddingX={1} marginRight={1}>
@@ -161,7 +258,7 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
               />
             </Box>
             <Box marginTop={1}>
-              <Text color="yellow"> {filteredPrs.length} matches | </Text>
+              <Text color="yellow"> {sortedPrs.length} matches | </Text>
               <Text bold color="cyan">Enter</Text>
               <Text color="dim"> to keep | </Text>
               <Text bold color="cyan">Esc</Text>
@@ -174,6 +271,7 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
               <Text color="dim">Keys: </Text>
               <Text bold color="white">↑/↓</Text><Text color="dim"> navigate | </Text>
               <Text bold color="white">/</Text><Text color="dim"> filter | </Text>
+              <Text bold color="white">s</Text><Text color="dim"> sort | </Text>
               <Text bold color="white">o</Text><Text color="dim"> open | </Text>
               <Text bold color="white">c</Text><Text color="dim"> copy branch | </Text>
               <Text bold color="white">r</Text><Text color="dim"> refetch | </Text>
@@ -190,6 +288,7 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
       </Box>
     </Box>
   );
+
 };
 
 

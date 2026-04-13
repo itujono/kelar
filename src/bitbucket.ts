@@ -118,28 +118,31 @@ export const fetchPRs = async (all = false): Promise<BitbucketPR[]> => {
   const { BITBUCKET_USERNAME } = getBitbucketConfig();
   const baseUrl = getBaseUrl();
   const url = new URL(`${baseUrl}/pullrequests`);
-  url.searchParams.append("state", "OPEN");
   
-  // Bitbucket API filtering can be complex, for simplicity we'll fetch then filter or use 'q' parameter if possible.
+  // Use 'q' parameter for all filtering to ensure state and author checks are combined correctly
+  let query = 'state="OPEN"';
   if (!all && BITBUCKET_USERNAME) {
-     url.searchParams.append("q", `author.nickname="${BITBUCKET_USERNAME}" OR author.username="${BITBUCKET_USERNAME}"`);
+    query = `(${query}) AND (author.nickname="${BITBUCKET_USERNAME}" OR author.username="${BITBUCKET_USERNAME}")`;
   }
-
-  url.searchParams.append("fields", "+values.participants");
+  
+  url.searchParams.append("q", query);
+  url.searchParams.append("fields", "values.*,values.participants");
 
   const response = await fetch(url.toString(), {
     headers: { "Authorization": getAuthHeader() },
   });
-
-
 
   if (!response.ok) {
     throw new Error(`Failed to fetch PRs: ${response.statusText}`);
   }
 
   const data = await response.json() as { values?: BitbucketPR[] };
-  return data.values || [];
+  const values = data.values || [];
+  
+  // Client-side safety filter
+  return values.filter(pr => pr.state === "OPEN");
 };
+
 
 
 export const fetchPRActivity = async (prId: number): Promise<BitbucketActivity[]> => {

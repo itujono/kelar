@@ -2,13 +2,19 @@ import React from "react";
 import { Box, Text } from "ink";
 import { formatDistanceToNow } from "date-fns";
 import { type BitbucketPR } from "../bitbucket";
+import { getBitbucketConfig } from "../config";
 
 interface PRTableProps {
   prs: BitbucketPR[];
   selectedIndex: number;
+  showMeColumn?: boolean;
 }
 
-export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
+export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex, showMeColumn = true }) => {
+  const config = getBitbucketConfig();
+  const myUsername = config.BITBUCKET_USERNAME?.toLowerCase();
+  const myHandle = myUsername?.includes("@") ? myUsername.split("@")[0] : myUsername;
+
   if (prs.length === 0) {
     return (
       <Box padding={1}>
@@ -21,7 +27,8 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
   const COL_WIDTHS = {
     id: 6,
     author: 12,
-    title: 80,
+    title: showMeColumn ? 80 : 86,
+    myReview: showMeColumn ? 6 : 0,
     feedback: 6,
     unresolved: 6,
     created: 14,
@@ -33,6 +40,7 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
     { label: "ID", width: COL_WIDTHS.id },
     { label: "Author", width: COL_WIDTHS.author },
     { label: "Title", width: COL_WIDTHS.title },
+    ...(showMeColumn ? [{ label: "Me", width: COL_WIDTHS.myReview }] : []),
     { label: "FB", width: COL_WIDTHS.feedback },
     { label: "UN", width: COL_WIDTHS.unresolved },
     { label: "Created", width: COL_WIDTHS.created },
@@ -59,8 +67,43 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
         const isSelected = index === selectedIndex;
         const authorName = pr.author.display_name.split(" ")[0] || "Unknown";
 
-        // Approval count
-        const approvals = pr.participants?.filter(p => p.approved).length || 0;
+        // My review status
+        const myParticipant = pr.participants?.find(p => {
+          if (!myUsername) return false;
+          const nick = p.user.nickname?.toLowerCase();
+          const display = p.user.display_name?.toLowerCase();
+          const account = p.user.account_id?.toLowerCase();
+          
+          return (
+            nick === myUsername || 
+            nick === myHandle ||
+            display === myUsername || 
+            display?.includes(myUsername) ||
+            display?.includes(myHandle || "") ||
+            account === myUsername ||
+            account === myHandle
+          );
+        });
+
+        let myReviewIcon = "-";
+        let myReviewColor = "dim";
+        
+        if (!myUsername) {
+          myReviewIcon = "?";
+          myReviewColor = "yellow";
+        } else if (myParticipant) {
+          const isApproved = myParticipant.approved || myParticipant.state === "approved";
+          
+          if (isApproved) {
+            myReviewIcon = "✓";
+            myReviewColor = "green";
+          } else {
+            myReviewIcon = "-";
+            myReviewColor = "red";
+          }
+        }
+
+        const approvals = pr.participants?.filter(p => p.approved || p.state === "approved").length || 0;
         const status = approvals > 0 ? `✓ ${approvals}` : `○ ${approvals}`;
         const statusColor = isSelected ? "black" : (approvals > 0 ? "green" : "dim");
 
@@ -87,6 +130,11 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
                 {pr.title}
               </Text>
             </Box>
+            {showMeColumn && (
+              <Box width={COL_WIDTHS.myReview}>
+                <Text bold color={isSelected ? "black" : myReviewColor}>{myReviewIcon}</Text>
+              </Box>
+            )}
             <Box width={COL_WIDTHS.feedback}>
               <Text color={isSelected ? "black" : (commentCount > 0 ? "magenta" : "dim")}>
                 {commentCount}
@@ -111,15 +159,10 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
             <Box width={COL_WIDTHS.status}>
               <Text color={statusColor}>{status}</Text>
             </Box>
-
           </Box>
         );
       })}
 
-
     </Box>
   );
 };
-
-
-
