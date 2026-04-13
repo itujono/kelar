@@ -4,8 +4,10 @@ import { Command } from "commander";
 import { LogNew } from "./commands/LogNew";
 import { LogView, type SortType } from "./commands/LogView";
 import { LogConfig } from "./commands/LogConfig";
-import { setAppConfig, type ConfigKey, CONFIG_KEYS } from "./config";
+import { setAppConfig, type ConfigKey, CONFIG_KEYS, BITBUCKET_CONFIG_KEYS, type BitbucketConfigKey, getBitbucketConfig } from "./config";
 import { Text, Box } from "ink";
+import { PRView } from "./commands/PRView";
+
 
 const program = new Command();
 
@@ -91,10 +93,76 @@ config
     }
   });
 
-// Handle 'log config' to default to 'view'
-config.action(async () => {
-  const { waitUntilExit } = render(<LogConfig />);
-  await waitUntilExit();
-});
+// pr list [--all]
+const pr = program.command("pr").description("Manage pull requests");
+
+pr
+  .command("list")
+  .description("List open pull requests")
+  .option("-a, --all", "Show all pull requests in the repository", false)
+  .action(async (options) => {
+    const { waitUntilExit } = render(<PRView showAll={options.all} />);
+    await waitUntilExit();
+  });
+
+// pr config [subcommand]
+const prConfig = pr.command("config").description("Manage Bitbucket configuration");
+
+prConfig
+  .command("view")
+  .description("View Bitbucket configuration")
+  .action(async () => {
+    const config = getBitbucketConfig();
+    const { unmount } = render(
+      <Box padding={1} flexDirection="column">
+        <Text bold underline color="cyan">Bitbucket Configuration</Text>
+        {Object.entries(config).map(([key, value]) => (
+          <Box key={key} marginTop={1}>
+            <Box width={25}>
+              <Text bold>{key}: </Text>
+            </Box>
+            <Text color={value ? "white" : "dim"}>{value || "Not Set"}</Text>
+          </Box>
+        ))}
+
+      </Box>
+    );
+    setTimeout(() => {
+      unmount();
+      process.exit(0);
+    }, 50);
+  });
+
+prConfig
+  .command("set")
+  .description("Update a Bitbucket configuration value")
+  .argument("<key>", "Config key (BITBUCKET_USERNAME, BITBUCKET_APP_PASSWORD, BITBUCKET_WORKSPACE, BITBUCKET_REPO_SLUG)")
+  .argument("<value>", "New value")
+  .action((key, value) => {
+    const upperKey = key.toUpperCase() as BitbucketConfigKey;
+    if (BITBUCKET_CONFIG_KEYS[upperKey]) {
+      setAppConfig(upperKey as any, value);
+      const { unmount } = render(
+        <Box padding={1}>
+          <Text color="green">✅ Updated Bitbucket {upperKey} successfully!</Text>
+        </Box>
+      );
+      setTimeout(() => {
+        unmount();
+        process.exit(0);
+      }, 50);
+    } else {
+      const { unmount } = render(
+        <Box padding={1}>
+          <Text color="red">❌ Invalid Bitbucket config key: {key}</Text>
+        </Box>
+      );
+      setTimeout(() => {
+        unmount();
+        process.exit(1);
+      }, 50);
+    }
+  });
 
 program.parse(process.argv);
+
