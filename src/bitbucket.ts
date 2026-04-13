@@ -112,9 +112,13 @@ export const fetchPRs = async (all = false): Promise<BitbucketPR[]> => {
      url.searchParams.append("q", `author.nickname="${BITBUCKET_USERNAME}" OR author.username="${BITBUCKET_USERNAME}"`);
   }
 
+  url.searchParams.append("fields", "+values.participants");
+
   const response = await fetch(url.toString(), {
     headers: { "Authorization": getAuthHeader() },
   });
+
+
 
   if (!response.ok) {
     throw new Error(`Failed to fetch PRs: ${response.statusText}`);

@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
+import { formatDistanceToNow } from "date-fns";
 import { type BitbucketPR } from "../bitbucket";
 
 interface PRTableProps {
@@ -17,11 +18,22 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
   }
 
   // Define columns and widths
+  const COL_WIDTHS = {
+    id: 6,
+    author: 12,
+    title: 80,
+    created: 16,
+    updated: 16,
+    status: 8,
+  };
+
   const columns = [
-    { label: "ID", width: 6, key: "id" },
-    { label: "Author", width: 15, key: "author" },
-    { label: "Title", width: 40, key: "title" },
-    { label: "Status", width: 15, key: "status" },
+    { label: "ID", width: COL_WIDTHS.id },
+    { label: "Author", width: COL_WIDTHS.author },
+    { label: "Title", width: COL_WIDTHS.title },
+    { label: "Created", width: COL_WIDTHS.created },
+    { label: "Updated", width: COL_WIDTHS.updated },
+    { label: "Status", width: COL_WIDTHS.status },
   ];
 
   return (
@@ -44,8 +56,12 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
 
         // Approval count
         const approvals = pr.participants?.filter(p => p.approved).length || 0;
+        const status = approvals > 0 ? `✓ ${approvals}` : `○ ${approvals}`;
+        const statusColor = isSelected ? "black" : (approvals > 0 ? "green" : "dim");
 
-        const status = `✓ ${approvals}`;
+
+        const createdDate = new Date(pr.created_on);
+        const updatedDate = new Date(pr.updated_on);
 
         return (
           <Box
@@ -53,19 +69,29 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
             paddingX={1}
             backgroundColor={isSelected ? "white" : undefined}
           >
-            <Box width={columns?.[0]?.width}>
+            <Box width={COL_WIDTHS.id}>
               <Text color={isSelected ? "black" : "dim"}>#{pr.id}</Text>
             </Box>
-            <Box width={columns?.[1]?.width}>
+            <Box width={COL_WIDTHS.author}>
               <Text color={isSelected ? "black" : "yellow"}>{authorName}</Text>
             </Box>
-            <Box width={columns?.[2]?.width}>
+            <Box width={COL_WIDTHS.title}>
               <Text color={isSelected ? "black" : undefined} wrap="truncate-end">
                 {pr.title}
               </Text>
             </Box>
-            <Box width={columns?.[3]?.width}>
-              <Text color={isSelected ? "black" : "green"}>{status}</Text>
+            <Box width={COL_WIDTHS.created}>
+              <Text color={isSelected ? "black" : "dim"}>
+                {formatDistanceToNow(createdDate, { addSuffix: false })}
+              </Text>
+            </Box>
+            <Box width={COL_WIDTHS.updated}>
+              <Text color={isSelected ? "black" : "dim"}>
+                {formatDistanceToNow(updatedDate, { addSuffix: false })}
+              </Text>
+            </Box>
+            <Box width={COL_WIDTHS.status}>
+              <Text color={statusColor}>{status}</Text>
             </Box>
 
           </Box>
@@ -74,3 +100,6 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
     </Box>
   );
 };
+
+
+

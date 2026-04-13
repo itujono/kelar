@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Box, Text, useInput, useApp } from "ink";
+import TextInput from "ink-text-input";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import Spinner from "ink-spinner";
 import { PRTable } from "../components/PRTable";
@@ -14,15 +15,43 @@ interface PRViewProps {
 const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [filterQuery, setFilterQuery] = useState("");
+  const [isFiltering, setIsFiltering] = useState(false);
 
   const { data: prs, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["prs", showAll],
     queryFn: () => fetchPRs(showAll),
   });
 
-  const activePR = prs?.[selectedIndex];
+  const filteredPrs = prs?.filter(pr => {
+    if (!filterQuery) return true;
+    const search = filterQuery.toLowerCase();
+    return (
+      pr.title.toLowerCase().includes(search) ||
+      pr.source.branch.name.toLowerCase().includes(search) ||
+      pr.id.toString().includes(search)
+    );
+  }) || [];
+
+  const activePR = filteredPrs[selectedIndex];
 
   useInput((input, key) => {
+    if (input === "/" && !isFiltering) {
+      setIsFiltering(true);
+      setFilterQuery("");
+      setSelectedIndex(0);
+      return;
+    }
+
+    if (key.escape) {
+      setIsFiltering(false);
+      setFilterQuery("");
+      setSelectedIndex(0);
+      return;
+    }
+
+    if (isFiltering) return; // Let TextInput handle it
+
     if (input === "q") {
       exit();
     }
@@ -32,9 +61,7 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
     }
 
     if (key.downArrow) {
-      if (prs) {
-        setSelectedIndex((prev) => Math.min(prs.length - 1, prev + 1));
-      }
+      setSelectedIndex((prev) => Math.min(filteredPrs.length - 1, prev + 1));
     }
 
     if (input === "r") {
@@ -55,6 +82,13 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
       });
     }
   });
+
+  const handleFilterChange = (val: string) => {
+    const sanitized = val.replace(/^\/+/, "");
+    setFilterQuery(sanitized);
+    setSelectedIndex(0);
+  };
+
 
   if (!isBitbucketConfigValid().valid) {
     const missing = isBitbucketConfigValid().missing;
@@ -106,30 +140,57 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
 
       <Box flexDirection="row">
         <Box flexGrow={1} marginRight={2}>
-          <PRTable prs={prs} selectedIndex={selectedIndex} />
+          <PRTable prs={filteredPrs} selectedIndex={selectedIndex} />
         </Box>
         {activePR && <PRDetailPane pr={activePR} />}
       </Box>
 
       <Box marginTop={1} flexDirection="column">
-        <Box>
-          <Text color="dim">Keys: </Text>
-          <Text bold color="white">↑/↓</Text><Text color="dim"> navigate | </Text>
-          <Text bold color="white">o</Text><Text color="dim"> open | </Text>
-          <Text bold color="white">c</Text><Text color="dim"> copy branch | </Text>
-          <Text bold color="white">r</Text><Text color="dim"> refetch | </Text>
-          <Text bold color="white">q</Text><Text color="dim"> quit</Text>
-        </Box>
-        {activePR && (
-          <Box marginTop={1}>
-            <Text color="dim">Selected: </Text>
-            <Text color="yellow">#{activePR.id} - {activePR.title}</Text>
+        {isFiltering ? (
+          <Box borderStyle="single" borderColor="yellow" paddingX={1} marginBottom={1} flexDirection="column">
+            <Box>
+              <Box backgroundColor="yellow" paddingX={1} marginRight={1}>
+                <Text bold color="black"> FILTER </Text>
+              </Box>
+              <TextInput
+                value={filterQuery}
+                onChange={handleFilterChange}
+                onSubmit={() => setIsFiltering(false)}
+                placeholder="Search title, branch, or ID..."
+              />
+            </Box>
+            <Box marginTop={1}>
+              <Text color="yellow"> {filteredPrs.length} matches | </Text>
+              <Text bold color="cyan">Enter</Text>
+              <Text color="dim"> to keep | </Text>
+              <Text bold color="cyan">Esc</Text>
+              <Text color="dim"> to reset</Text>
+            </Box>
           </Box>
+        ) : (
+          <>
+            <Box>
+              <Text color="dim">Keys: </Text>
+              <Text bold color="white">↑/↓</Text><Text color="dim"> navigate | </Text>
+              <Text bold color="white">/</Text><Text color="dim"> filter | </Text>
+              <Text bold color="white">o</Text><Text color="dim"> open | </Text>
+              <Text bold color="white">c</Text><Text color="dim"> copy branch | </Text>
+              <Text bold color="white">r</Text><Text color="dim"> refetch | </Text>
+              <Text bold color="white">q</Text><Text color="dim"> quit</Text>
+            </Box>
+            {activePR && (
+              <Box marginTop={1}>
+                <Text color="dim">Selected: </Text>
+                <Text color="yellow">#{activePR.id} - {activePR.title}</Text>
+              </Box>
+            )}
+          </>
         )}
       </Box>
     </Box>
   );
 };
+
 
 export const PRView: React.FC<PRViewProps> = (props) => {
   return (
