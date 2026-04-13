@@ -22,8 +22,10 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
     id: 6,
     author: 12,
     title: 80,
-    created: 16,
-    updated: 16,
+    feedback: 6,
+    unresolved: 6,
+    created: 14,
+    updated: 14,
     status: 8,
   };
 
@@ -31,6 +33,8 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
     { label: "ID", width: COL_WIDTHS.id },
     { label: "Author", width: COL_WIDTHS.author },
     { label: "Title", width: COL_WIDTHS.title },
+    { label: "FB", width: COL_WIDTHS.feedback },
+    { label: "UN", width: COL_WIDTHS.unresolved },
     { label: "Created", width: COL_WIDTHS.created },
     { label: "Updated", width: COL_WIDTHS.updated },
     { label: "Status", width: COL_WIDTHS.status },
@@ -42,7 +46,7 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
       {/* Header */}
       <Box paddingX={1} marginBottom={0}>
         {columns.map((col) => (
-          <Box key={col.label} width={col.width}>
+          <Box key={col.label} width={col.width} marginRight={col.label === "Title" ? 4 : 0}>
             <Text bold color="cyan">
               {col.label}
             </Text>
@@ -60,6 +64,8 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
         const status = approvals > 0 ? `✓ ${approvals}` : `○ ${approvals}`;
         const statusColor = isSelected ? "black" : (approvals > 0 ? "green" : "dim");
 
+        const commentCount = pr.comment_count || 0;
+        const taskCount = pr.task_count || 0;
 
         const createdDate = new Date(pr.created_on);
         const updatedDate = new Date(pr.updated_on);
@@ -76,21 +82,32 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
             <Box width={COL_WIDTHS.author}>
               <Text color={isSelected ? "black" : "yellow"}>{authorName}</Text>
             </Box>
-            <Box width={COL_WIDTHS.title}>
+            <Box width={COL_WIDTHS.title} marginRight={4}>
               <Text color={isSelected ? "black" : undefined} wrap="truncate-end">
                 {pr.title}
               </Text>
             </Box>
+            <Box width={COL_WIDTHS.feedback}>
+              <Text color={isSelected ? "black" : (commentCount > 0 ? "magenta" : "dim")}>
+                {commentCount}
+              </Text>
+            </Box>
+            <Box width={COL_WIDTHS.unresolved}>
+              <Text color={isSelected ? "black" : (taskCount > 0 ? "red" : "dim")}>
+                {taskCount}
+              </Text>
+            </Box>
             <Box width={COL_WIDTHS.created}>
               <Text color={isSelected ? "black" : "dim"}>
-                {formatDistanceToNow(createdDate, { addSuffix: false })}
+                {formatDistanceToNow(createdDate, { addSuffix: false }).replace("about ", "~ ")}
               </Text>
             </Box>
             <Box width={COL_WIDTHS.updated}>
               <Text color={isSelected ? "black" : "dim"}>
-                {formatDistanceToNow(updatedDate, { addSuffix: false })}
+                {formatDistanceToNow(updatedDate, { addSuffix: false }).replace("about ", "~ ")}
               </Text>
             </Box>
+
             <Box width={COL_WIDTHS.status}>
               <Text color={statusColor}>{status}</Text>
             </Box>
@@ -98,6 +115,8 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex }) => {
           </Box>
         );
       })}
+
+
     </Box>
   );
 };

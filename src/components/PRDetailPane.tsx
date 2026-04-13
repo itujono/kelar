@@ -5,10 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import {
   type BitbucketPR,
   fetchPRActivity,
-  fetchPRTasks,
-  fetchPRStatuses,
+  fetchPRComments,
   calculateVelocity
 } from "../bitbucket";
+
 
 interface PRDetailPaneProps {
   pr: BitbucketPR;
@@ -32,25 +32,20 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
     queryFn: () => fetchPRActivity(pr.id),
   });
 
-  const { data: tasks, isLoading: isLoadingTasks } = useQuery({
-    queryKey: ["pr", pr.id, "tasks"],
-    queryFn: () => fetchPRTasks(pr.id),
-  });
-
-  const { data: statuses, isLoading: isLoadingStatuses } = useQuery({
-    queryKey: ["pr", pr.id, "statuses"],
-    queryFn: () => fetchPRStatuses(pr.id),
+  const { data: comments, isLoading: isLoadingComments } = useQuery({
+    queryKey: ["pr", pr.id, "comments"],
+    queryFn: () => fetchPRComments(pr.id),
   });
 
   const velocity = activity ? calculateVelocity(pr, activity) : null;
-  const unresolvedTasks = tasks?.filter(t => t.state === "OPEN").length || 0;
-
-  // Pipeline status (take the latest one)
-  const latestStatus = statuses?.[0];
+  const commentCount = pr.comment_count || 0;
+  
+  const peerComments = comments?.filter(c => c.user.account_id !== pr.author.account_id) || [];
+  const resolvedCount = peerComments.filter(c => c.is_resolved).length;
+  const unresolvedCount = peerComments.filter(c => !c.is_resolved).length;
 
   return (
     <Box flexDirection="column" paddingX={2} width={50} minHeight={20} borderStyle="single" borderColor="cyan">
-
       <Text bold color="white" underline>Details (PR #{pr.id})</Text>
 
       <Box flexDirection="column" marginTop={1}>
@@ -77,29 +72,28 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
           </Box>
         ))}
       </Box>
+
       <Box flexDirection="column" marginTop={1}>
-        <Text bold color="yellow">Tasks & Pipelines</Text>
+        <Text bold color="yellow">Peer Feedback</Text>
         <Box paddingLeft={1}>
-          <Text color="dim">Tasks: </Text>
-          <Text color={unresolvedTasks > 0 ? "yellow" : "green"}>
-            {unresolvedTasks} unresolved / {tasks?.length || 0} total
+          <Text color="dim">Resolved: </Text>
+          <Text color={resolvedCount > 0 ? "green" : "dim"}>
+            {resolvedCount} items
           </Text>
         </Box>
         <Box paddingLeft={1}>
-          <Text color="dim">Build: </Text>
-          {isLoadingStatuses ? (
-            <Spinner type="dots" />
-          ) : latestStatus ? (
-            <Text color={latestStatus.state === "SUCCESSFUL" ? "green" : latestStatus.state === "FAILED" ? "red" : "yellow"}>
-              {latestStatus.state}
-            </Text>
-          ) : (
-            <Text color="dim">No builds</Text>
-          )}
+          <Text color="dim">Unresolved: </Text>
+          <Text color={unresolvedCount > 0 ? "red" : "dim"}>
+            {unresolvedCount} items
+          </Text>
+        </Box>
+        <Box paddingLeft={1}>
+          <Text color="dim">Total Comments: </Text>
+          <Text color="magenta">{commentCount}</Text>
         </Box>
       </Box>
 
-      {(isLoadingActivity || isLoadingTasks) && (
+      {(isLoadingActivity || isLoadingComments) && (
         <Box marginTop={1}>
           <Spinner type="dots" />
           <Text italic color="dim"> Fetching updates...</Text>
@@ -108,3 +102,5 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
     </Box>
   );
 };
+
+

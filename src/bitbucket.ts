@@ -82,6 +82,19 @@ export interface BitbucketStatus {
   url: string;
 }
 
+export interface BitbucketComment {
+  id: number;
+  content: { raw: string };
+  user: BitbucketUser;
+  created_on: string;
+  updated_on: string;
+  is_resolved: boolean;
+  inline?: {
+    path: string;
+  };
+}
+
+
 const getAuthHeader = () => {
   const { BITBUCKET_EMAIL, BITBUCKET_TOKEN } = getBitbucketConfig();
   if (!BITBUCKET_EMAIL || !BITBUCKET_TOKEN) {
@@ -166,6 +179,18 @@ export const fetchPRStatuses = async (prId: number): Promise<BitbucketStatus[]> 
   const data = await response.json() as { values?: BitbucketStatus[] };
   return data.values || [];
 };
+
+export const fetchPRComments = async (prId: number): Promise<BitbucketComment[]> => {
+  const baseUrl = getBaseUrl();
+  const response = await fetch(`${baseUrl}/pullrequests/${prId}/comments`, {
+    headers: { "Authorization": getAuthHeader() },
+  });
+
+  if (!response.ok) return [];
+  const data = await response.json() as { values?: BitbucketComment[] };
+  return data.values || [];
+};
+
 
 
 export const calculateVelocity = (pr: BitbucketPR, activities: BitbucketActivity[]) => {
