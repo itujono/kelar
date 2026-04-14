@@ -1,28 +1,96 @@
 import { getAppConfig } from "./config";
 import { Buffer } from "node:buffer";
 
+export interface JiraUser {
+  accountId: string;
+  displayName: string;
+  emailAddress?: string;
+  avatarUrls?: Record<string, string>;
+  accountType?: "atlassian" | "app" | "customer" | "unknown";
+}
+
 export interface JiraIssue {
   id: string;
   key: string;
   fields: {
     summary: string;
-    assignee: {
-      accountId: string;
-      displayName: string;
+    description: string | { content: any[] } | null;
+    status: {
+      name: string;
+      statusCategory: {
+        name: string;
+        key: string;
+      };
+    };
+    priority: {
+      name: string;
     } | null;
+    assignee: JiraUser | null;
+    timeoriginalestimate: number | null; // seconds
+    timespent: number | null; // seconds
+    created: string;
+    updated: string;
+    comment?: {
+      comments: JiraComment[];
+    };
+    worklog?: {
+      worklogs: JiraWorklog[];
+    };
+    issuelinks: JiraIssueLink[];
+  };
+}
+
+export interface JiraIssueLink {
+  id: string;
+  type: {
+    name: string;
+    inward: string;
+    outward: string;
+  };
+  inwardIssue?: {
+    id: string;
+    key: string;
+    fields: {
+      summary: string;
+      status: { name: string };
+    };
+  };
+  outwardIssue?: {
+    id: string;
+    key: string;
+    fields: {
+      summary: string;
+      status: { name: string };
+    };
+  };
+}
+
+export interface JiraTransition {
+  id: string;
+  name: string;
+  to: {
+    name: string;
+    statusCategory: {
+      name: string;
+      key: string;
+    };
   };
 }
 
 export interface JiraComment {
-  content: {
+  id: string;
+  created: string;
+  body: {
     content: {
-      text: string;
+      content: {
+        text: string;
+        type: string;
+      }[];
       type: string;
     }[];
     type: string;
-  }[];
-  type: string;
-  version: number;
+    version: number;
+  };
 }
 
 export interface JiraWorklog {
@@ -138,7 +206,20 @@ export async function searchIssues(jql: string): Promise<JiraIssue[]> {
     },
     body: JSON.stringify({
       jql,
-      fields: ["summary", "assignee"]
+      fields: [
+        "summary", 
+        "assignee", 
+        "status", 
+        "priority", 
+        "timeoriginalestimate", 
+        "timespent", 
+        "created", 
+        "updated", 
+        "comment", 
+        "worklog", 
+        "issuelinks",
+        "description"
+      ]
     }),
   });
 
@@ -149,6 +230,148 @@ export async function searchIssues(jql: string): Promise<JiraIssue[]> {
 
   const data = await response.json() as { issues: JiraIssue[] };
   return data.issues;
+}
+
+/**
+ * Searches for all manageable users
+ */
+export async function fetchUsers(query: string = ""): Promise<JiraUser[]> {
+  const url = `${getBaseUrl()}/users/search?query=${encodeURIComponent(query)}`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: getAuthHeader(),
+      Accept: "application/json",
+      "User-Agent": "KelarCLI/1.0.0",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch users: ${response.status} ${errorText}`);
+  }
+
+  const users = await response.json() as JiraUser[];
+  
+  // Filter out non-person accounts aggressively
+  const BANNED_KEYWORDS = [
+    "app", "automation", "assist", "outlook", "trello", 
+    "notifications", "spreadsheet", "bot", "connect", 
+    "service", "integration", "slack", "system"
+  ];
+
+  return users.filter(u => {
+    if (!u.accountId) return false;
+    if (u.accountType === "app") return false;
+    
+    const name = u.displayName.toLowerCase();
+    const isBot = BANNED_KEYWORDS.some(kw => name.includes(kw));
+    
+    return !isBot;
+  });
+}
+
+/**
+ * Fetches available transitions for an issue
+ */
+export async function fetchTransitions(issueKey: string): Promise<JiraTransition[]> {
+  const url = `${getBaseUrl()}/issue/${issueKey}/transitions`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: getAuthHeader(),
+      Accept: "application/json",
+      "User-Agent": "KelarCLI/1.0.0",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch transitions for ${issueKey}: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json() as { transitions: JiraTransition[] };
+  return data.transitions;
+}
+
+/**
+ * Transitions an issue to a new status
+ */
+export async function transitionIssue(issueKey: string, transitionId: string): Promise<void> {
+  const url = `${getBaseUrl()}/issue/${issueKey}/transitions`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: getAuthHeader(),
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "User-Agent": "KelarCLI/1.0.0",
+    },
+    body: JSON.stringify({
+      transition: { id: transitionId }
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to transition ${issueKey}: ${response.status} ${errorText}`);
+  }
+}
+
+/**
+ * Updates the original estimate of an issue
+ */
+export async function updateIssueEstimate(issueKey: string, estimateSeconds: number): Promise<void> {
+  const url = `${getBaseUrl()}/issue/${issueKey}`;
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: getAuthHeader(),
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "User-Agent": "KelarCLI/1.0.0",
+    },
+    body: JSON.stringify({
+      fields: {
+        timetracking: {
+          originalEstimate: `${Math.floor(estimateSeconds / 60)}m`
+        }
+      }
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to update estimate for ${issueKey}: ${response.status} ${errorText}`);
+  }
+}
+
+/**
+ * Fetches active worklogs today to calculate context score
+ */
+export async function fetchActivityCountToday(): Promise<number> {
+  // JQL for unique tickets worked on today by current user
+  const jql = `worklogDate >= startOfDay() AND worklogAuthor = currentUser()`;
+  const url = `${getBaseUrl()}/search`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: getAuthHeader(),
+      "Content-Type": "application/json",
+      "User-Agent": "KelarCLI/1.0.0",
+    },
+    body: JSON.stringify({
+      jql,
+      maxResults: 100,
+      fields: ["key"]
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch today's activity: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json() as { total: number };
+  return data.total;
 }
 
 /**

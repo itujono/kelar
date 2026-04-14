@@ -7,6 +7,7 @@ import { LogConfig } from "./commands/LogConfig";
 import { setAppConfig, type ConfigKey, CONFIG_KEYS, BITBUCKET_CONFIG_KEYS, type BitbucketConfigKey, getBitbucketConfig } from "./config";
 import { Text, Box } from "ink";
 import { PRView } from "./commands/PRView";
+import { TixView } from "./commands/TixView";
 
 
 const program = new Command();
@@ -164,6 +165,18 @@ prConfig
         process.exit(1);
       }, 50);
     }
+  });
+
+// tix list [--all]
+const tix = program.command("tix").description("Manage Jira tickets");
+
+tix
+  .command("list")
+  .description("List active Jira tickets")
+  .option("-a, --all", "Show searchable list of team members", false)
+  .action(async (options) => {
+    const { waitUntilExit } = render(<TixView showAll={options.all} />);
+    await waitUntilExit();
   });
 
 program.parse(process.argv);
