@@ -78,14 +78,35 @@ export const TixDetailPane: React.FC<TixDetailPaneProps> = ({ ticket, contextSco
         </Box>
       </Box>
 
-      <Box marginTop={1} borderStyle="single" borderTop={true} borderBottom={false} borderLeft={false} borderRight={false} borderColor="dim" paddingTop={1}>
-        <Text bold>Details:</Text>
+      <Box marginTop={1} paddingTop={1} borderStyle="single" borderTop={true} borderBottom={false} borderLeft={false} borderRight={false} borderColor="dim" flexDirection="column">
+        <Box marginBottom={1}>
+          <Text bold color="white">DETAILS</Text>
+        </Box>
+        
+        <Box>
+          <Box width={12}><Text color="dim">Status:</Text></Box>
+          <Text>{ticket.fields.status.name}</Text>
+        </Box>
+        
+        <Box>
+          <Box width={12}><Text color="dim">Priority:</Text></Box>
+          <Text color={
+            ticket.fields.priority?.name === "Highest" || ticket.fields.priority?.name === "High" ? "red" : "white"
+          }>{ticket.fields.priority?.name || "None"}</Text>
+        </Box>
+        
+        <Box>
+          <Box width={12}><Text color="dim">Assignee:</Text></Box>
+          <Text color="yellow">{ticket.fields.assignee?.displayName || "Unassigned"}</Text>
+        </Box>
+
         <Box marginTop={1}>
-          <Box width={10}><Text color="dim">Updated:</Text></Box>
+          <Box width={12}><Text color="dim">Updated:</Text></Box>
           <Text>{formatDistanceToNow(new Date(ticket.fields.updated), { addSuffix: true })}</Text>
         </Box>
+        
         <Box>
-          <Box width={10}><Text color="dim">Created:</Text></Box>
+          <Box width={12}><Text color="dim">Created:</Text></Box>
           <Text>{formatDistanceToNow(new Date(ticket.fields.created), { addSuffix: true })}</Text>
         </Box>
       </Box>
