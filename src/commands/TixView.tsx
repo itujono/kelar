@@ -3,7 +3,7 @@ import { Box, Text, useInput, useApp } from "ink";
 import TextInput from "ink-text-input";
 import { QueryClientProvider, useQuery, useMutation, useQueryClient, QueryClient } from "@tanstack/react-query";
 import Spinner from "ink-spinner";
-import { startOfMonth, differenceInCalendarDays, setDate, addMonths } from "date-fns";
+import { format, startOfMonth, differenceInCalendarDays, setDate, addMonths } from "date-fns";
 import { TixTable } from "../components/TixTable";
 import { TixDetailPane } from "../components/TixDetailPane";
 import {
@@ -67,9 +67,10 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
     enabled: isUserSelecting
   });
 
+  const jqlDate = format(startOfMonth(new Date()), "yyyy-MM-dd");
   const { data: tickets, isLoading: isLoadingTickets, refetch: refetchTickets } = useQuery({
     queryKey: ["tickets", accountId],
-    queryFn: () => searchIssues(`assignee = ${accountId} AND statusCategory != Done`),
+    queryFn: () => searchIssues(`assignee = ${accountId} AND updated >= "${jqlDate}"`),
     enabled: !!accountId && !isUserSelecting
   });
 

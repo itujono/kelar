@@ -102,12 +102,12 @@ export const TixDetailPane: React.FC<TixDetailPaneProps> = ({ ticket, contextSco
 
         <Box marginTop={1}>
           <Box width={12}><Text color="dim">Updated:</Text></Box>
-          <Text>{formatDistanceToNow(new Date(ticket.fields.updated), { addSuffix: true })}</Text>
+          <Text>{formatDistanceToNow(new Date(ticket.fields.updated), { addSuffix: true }).replace("about ", "~ ")}</Text>
         </Box>
         
         <Box>
           <Box width={12}><Text color="dim">Created:</Text></Box>
-          <Text>{formatDistanceToNow(new Date(ticket.fields.created), { addSuffix: true })}</Text>
+          <Text>{formatDistanceToNow(new Date(ticket.fields.created), { addSuffix: true }).replace("about ", "~ ")}</Text>
         </Box>
       </Box>
     </Box>

@@ -37,12 +37,13 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
   const COL_WIDTHS = {
     key: 12,
     priority: 8,
-    title: 60,
+    title: 70,
     status: 15,
     assignee: 15,
     estimate: 10,
     logged: 10,
     created: 14,
+    updated: 14,
   };
 
   const columns = [
@@ -54,6 +55,7 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
     { label: "Est", width: COL_WIDTHS.estimate },
     { label: "Log", width: COL_WIDTHS.logged },
     { label: "Created", width: COL_WIDTHS.created },
+    { label: "Updated", width: COL_WIDTHS.updated },
   ];
 
   if (tickets.length === 0) {
@@ -68,11 +70,11 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
   const total = tickets.length;
   const todo = tickets.filter(t => t.fields.status.statusCategory.key === "new").length;
   const inReview = tickets.filter(t => t.fields.status.name.toLowerCase().includes("review")).length;
-  const inProgress = tickets.filter(t => 
-    t.fields.status.statusCategory.key === "indeterminate" && 
+  const inProgress = tickets.filter(t =>
+    t.fields.status.statusCategory.key === "indeterminate" &&
     !t.fields.status.name.toLowerCase().includes("review")
   ).length;
-  
+
   // Zombie logic (simplified here, but typically checked in parent or detail pane)
   const isZombie = (t: JiraIssue) => {
     const updated = new Date(t.fields.updated).getTime();
@@ -135,7 +137,7 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
                 {priority}
               </Text>
             </Box>
-            <Box width={COL_WIDTHS.title} marginRight={2}>
+            <Box width={COL_WIDTHS.title}>
               <Text color={isSelected ? "black" : undefined} wrap="truncate-end">
                 {t.fields.summary}
               </Text>
@@ -163,6 +165,11 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
             <Box width={COL_WIDTHS.created}>
               <Text color={isSelected ? "black" : "dim"}>
                 {formatDistanceToNow(created, { addSuffix: false }).replace("about ", "~ ")}
+              </Text>
+            </Box>
+            <Box width={COL_WIDTHS.updated}>
+              <Text color={isSelected ? "black" : "dim"}>
+                {formatDistanceToNow(new Date(t.fields.updated), { addSuffix: false }).replace("about ", "~ ")}
               </Text>
             </Box>
           </Box>
