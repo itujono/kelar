@@ -143,7 +143,7 @@ const TixViewContent: React.FC<TixViewProps> = ({ isPeerMode = false }) => {
     if (!activeTicket || !logTime) return;
     const mins = parseJiraTime(logTime);
     if (mins > 0) {
-      logMutation.mutate({ key: activeTicket.key, minutes: mins, comment: logComment || "Logged via Kelar" });
+      logMutation.mutate({ key: activeTicket.key, minutes: mins, comment: logComment || "" });
     }
   };
 
