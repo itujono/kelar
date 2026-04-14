@@ -35,6 +35,7 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
   const { exit } = useApp();
   const config = getAppConfig();
   const [accountId, setAccountId] = useState<string | null>(showAll ? null : config.JIRA_ACCOUNT_ID);
+  const [selectedUserName, setSelectedUserName] = useState<string | null>(showAll ? null : "Me");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [filterQuery, setFilterQuery] = useState("");
   const [isFiltering, setIsFiltering] = useState(false);
@@ -225,6 +226,7 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
         const user = filteredUsers[selectedIndex];
         if (user) {
           setAccountId(user.accountId);
+          setSelectedUserName(user.displayName);
           setIsUserSelecting(false);
           setSelectedIndex(0);
         }
@@ -331,6 +333,12 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
         <Text bold color="cyan">Jira Engineering Intelligence</Text>
         <Text color="dim"> | Sort: </Text>
         <Text color="yellow">{sortOptions.find(o => o.value === sortType)?.label || sortType}</Text>
+        {selectedUserName && (
+          <>
+            <Text color="dim"> | User: </Text>
+            <Text color="magenta" bold>{selectedUserName}</Text>
+          </>
+        )}
       </Box>
 
       <Box flexDirection="row" minHeight={20}>

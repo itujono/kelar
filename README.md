@@ -98,6 +98,38 @@ kelar pr list --all
     - **`c`**: **Copy** the source branch name to your clipboard.
     - **`r`**: **Refetch** latest data from Bitbucket.
 
+### Tickets (Jira Engineering Intelligence)
+
+The `tix` command targets "Engineering Intelligence" over raw data mirroring. It focuses on observability, dependencies, and monthly goal tracking.
+
+```bash
+# View your active tickets
+kelar tix list
+
+# View active tickets for a team member (select user)
+kelar tix list --all
+```
+
+#### Observability Dashboard
+- **Table View**: Browse tickets with **ID, Prio, Title, Status, Assignee, Est, Log, Created, and Updated** columns.
+- **Detail Pane (Intelligence)**:
+    - **Zombie Status**: Highlights tickets with no activity in >48 hours.
+    - **Dependency Tree**: Recursive ASCII visualization of "Blocked By" links.
+    - **Context Score**: Daily count of unique tickets you've interacted with.
+- **Monthly Progress Pane**: Visual progress bar, percentage tracking against your hours goal, and a deadline countdown.
+- **Interactive Controls**:
+    - **`l`**: **Log Work** with a multi-field modal (Time & Comment).
+    - **`m`**: **Move** ticket status via interactive transition selection.
+    - **`e`**: **Estimate** original time.
+    - **`v`**: **View** full ticket description (parsed from Atlassian ADF to readable text).
+    - **`o`**: **Open** the ticket in your default browser.
+    - **`c`**: **Copy** the Jira link to your clipboard.
+    - **`/` & `s`**: Real-time filtering and sorting options.
+
+#### Performance & Accuracy
+- **High Performance**: Parallelized worklog fetching (N+1 to constant/parallel requests) reducing resolution time by ~90%.
+- **Bandwidth Saving**: Only fetches tickets updated since the 1st of the current month.
+
 
 ## Data Storage & Security
 
