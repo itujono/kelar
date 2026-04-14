@@ -40,12 +40,13 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
   const [isUserSelecting, setIsUserSelecting] = useState(showAll && !accountId);
 
   const [isSorting, setIsSorting] = useState(false);
-  const [sortType, setSortType] = useState<"newest" | "oldest" | "priority">("newest");
+  const [sortType, setSortType] = useState<"newest" | "oldest" | "priority" | "updated">("newest");
   const [sortIndex, setSortIndex] = useState(0);
 
   const sortOptions = [
     { label: "Newest Created", value: "newest" as const },
     { label: "Oldest Created", value: "oldest" as const },
+    { label: "Newest Updated", value: "updated" as const },
     { label: "High Priority", value: "priority" as const },
   ];
 
@@ -53,6 +54,7 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
   const [activeModal, setActiveModal] = useState<"log" | "move" | "estimate" | "view" | null>(null);
   const [logTime, setLogTime] = useState("");
   const [logComment, setLogComment] = useState("");
+  const [logFocus, setLogFocus] = useState<"time" | "comment">("time");
   const [estimateValue, setEstimateValue] = useState("");
   const [transitionIndex, setTransitionIndex] = useState(0);
 
@@ -137,6 +139,7 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
   const sortedTickets = [...filteredTickets].sort((a, b) => {
     if (sortType === "newest") return new Date(b.fields.created).getTime() - new Date(a.fields.created).getTime();
     if (sortType === "oldest") return new Date(a.fields.created).getTime() - new Date(b.fields.created).getTime();
+    if (sortType === "updated") return new Date(b.fields.updated).getTime() - new Date(a.fields.updated).getTime();
     if (sortType === "priority") {
       const prioMap: Record<string, number> = { "Highest": 0, "High": 1, "Medium": 2, "Low": 3, "Lowest": 4 };
       const valA = prioMap[a.fields.priority?.name || "Medium"] ?? 2;
@@ -155,6 +158,13 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
   useInput((input, key) => {
     if (activeModal) {
       if (key.escape) setActiveModal(null);
+
+      if (activeModal === "log") {
+        if (key.tab) {
+          setLogFocus(f => f === "time" ? "comment" : "time");
+          return;
+        }
+      }
 
       if (activeModal === "move" && transitions) {
         if (key.upArrow) setTransitionIndex(p => Math.max(0, p - 1));
@@ -224,6 +234,12 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
         // @ts-ignore
         Bun.spawn(["pbcopy"], { stdin: Buffer.from(url) });
       }
+      if (input === "o") {
+        const domain = config.JIRA_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
+        const url = `https://${domain}/browse/${activeTicket.key}`;
+        // @ts-ignore
+        Bun.spawn(["open", url]);
+      }
     }
 
     if (input === "r") refetchTickets();
@@ -271,12 +287,26 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
     );
   }
 
+  const extractAdfText = (doc: any): string => {
+    if (!doc) return "";
+    if (typeof doc === "string") return doc;
+    let text = "";
+    if (doc.text) text += doc.text;
+    if (doc.content && Array.isArray(doc.content)) {
+      doc.content.forEach((c: any) => {
+        text += extractAdfText(c);
+        if (c.type === "paragraph" || c.type === "heading") text += "\n";
+      });
+    }
+    return text;
+  };
+
   return (
     <Box flexDirection="column" padding={1}>
       <Box marginBottom={1}>
         <Text bold color="cyan">Jira Engineering Intelligence</Text>
-        <Text color="dim"> | User: </Text>
-        <Text color="yellow">{accountId}</Text>
+        <Text color="dim"> | Sort: </Text>
+        <Text color="yellow">{sortOptions.find(o => o.value === sortType)?.label || sortType}</Text>
       </Box>
 
       <Box flexDirection="row" minHeight={20}>
@@ -334,7 +364,8 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
             <Text bold color="white">m</Text><Text color="dim"> move | </Text>
             <Text bold color="white">e</Text><Text color="dim"> estimate | </Text>
             <Text bold color="white">v</Text><Text color="dim"> view | </Text>
-            <Text bold color="white">c</Text><Text color="dim"> copy link | </Text>
+            <Text bold color="white">c</Text><Text color="dim"> copy | </Text>
+            <Text bold color="white">o</Text><Text color="dim"> open | </Text>
             <Text bold color="white">s</Text><Text color="dim"> sort | </Text>
             <Text bold color="white">/</Text><Text color="dim"> filter | </Text>
             <Text bold color="white">r</Text><Text color="dim"> refetch | </Text>
@@ -345,26 +376,30 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
 
       {/* Modals */}
       {activeModal === "log" && (
-        <Box borderStyle="double" borderColor="magenta" padding={1} flexDirection="column" position="absolute" marginTop={5} marginLeft={20}>
+        <Box borderStyle="double" borderColor="magenta" padding={1} flexDirection="column" position="absolute" marginTop={5} marginLeft={20} backgroundColor="black">
           <Text bold color="magenta">Log Work for {activeTicket?.key}</Text>
           <Box marginTop={1}>
-            <Text>Time (e.g. 1h 30m): </Text>
-            <TextInput value={logTime} onChange={setLogTime} focus={true} />
+            <Text color={logFocus === "time" ? "white" : "dim"}>Time (e.g. 1h 30m): </Text>
+            <TextInput value={logTime} onChange={setLogTime} focus={logFocus === "time"} onSubmit={() => setLogFocus("comment")} />
           </Box>
           <Box>
-            <Text>Comment: </Text>
-            <TextInput value={logComment} onChange={setLogComment} onSubmit={handleLogSubmit} />
+            <Text color={logFocus === "comment" ? "white" : "dim"}>Comment: </Text>
+            <TextInput value={logComment} onChange={setLogComment} focus={logFocus === "comment"} onSubmit={handleLogSubmit} />
           </Box>
-          <Box marginTop={1}>
-            <Text color="dim">Press </Text><Text bold color="cyan">Enter</Text><Text color="dim"> to submit | </Text>
-            <Text bold color="cyan">Esc</Text><Text color="dim"> to cancel</Text>
+          <Box marginTop={1} flexDirection="column">
+            <Text color="dim">Press </Text>
+            <Box>
+              <Text bold color="cyan">Tab</Text><Text color="dim"> to switch | </Text>
+              <Text bold color="cyan">Enter</Text><Text color="dim"> to save | </Text>
+              <Text bold color="cyan">Esc</Text><Text color="dim"> to cancel</Text>
+            </Box>
           </Box>
           {logMutation.isPending && <Text italic color="yellow">Posting...</Text>}
         </Box>
       )}
 
       {activeModal === "move" && (
-        <Box borderStyle="double" borderColor="yellow" padding={1} flexDirection="column" position="absolute" marginTop={5} marginLeft={20}>
+        <Box borderStyle="double" borderColor="yellow" padding={1} flexDirection="column" position="absolute" marginTop={5} marginLeft={20} backgroundColor="black">
           <Text bold color="yellow">Transition {activeTicket?.key}</Text>
           {isLoadingTransitions ? (
             <Box marginTop={1}><Spinner type="dots" /><Text> Fetching options...</Text></Box>
@@ -385,7 +420,7 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
       )}
 
       {activeModal === "estimate" && (
-        <Box borderStyle="double" borderColor="cyan" padding={1} flexDirection="column" position="absolute" marginTop={5} marginLeft={20}>
+        <Box borderStyle="double" borderColor="cyan" padding={1} flexDirection="column" position="absolute" marginTop={5} marginLeft={20} backgroundColor="black">
           <Text bold color="cyan">Update Estimate for {activeTicket?.key}</Text>
           <Box marginTop={1}>
             <Text>New Estimate (e.g. 4h): </Text>
@@ -402,16 +437,17 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
       )}
 
       {activeModal === "view" && (
-        <Box borderStyle="double" borderColor="white" padding={1} flexDirection="column" position="absolute" marginTop={2} marginLeft={5} width={100} height={20}>
-          <Text bold color="cyan">{activeTicket?.key}: {activeTicket?.fields.summary}</Text>
-          <Box marginTop={1} flexGrow={1}>
-            <Text color="dim">
-              {typeof activeTicket?.fields.description === "string"
-                ? activeTicket.fields.description
-                : "Rich description content (view in browser for full rendering)"}
+        <Box borderStyle="double" borderColor="white" padding={1} flexDirection="column" position="absolute" marginTop={2} marginLeft={5} width={100} height={25} backgroundColor="black">
+          <Box marginBottom={1} borderStyle="single" borderTop={false} borderLeft={false} borderRight={false} borderColor="dim" paddingBottom={1}>
+            <Text bold color="cyan">[{activeTicket?.key}] </Text>
+            <Text bold color="white">{activeTicket?.fields.summary}</Text>
+          </Box>
+          <Box flexGrow={1} flexDirection="column">
+            <Text color="white">
+              {extractAdfText(activeTicket?.fields.description) || <Text italic color="dim">No description provided.</Text>}
             </Text>
           </Box>
-          <Box marginTop={1}>
+          <Box marginTop={1} paddingTop={1} borderStyle="single" borderBottom={false} borderLeft={false} borderRight={false} borderColor="dim">
             <Text bold color="cyan">Esc</Text><Text color="dim"> to close</Text>
           </Box>
         </Box>

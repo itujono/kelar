@@ -16,7 +16,8 @@ const formatSeconds = (seconds: number | null): string => {
   return `${m}m`;
 };
 
-const getStatusColor = (categoryKey: string): string => {
+const getStatusColor = (categoryKey: string, statusName: string): string => {
+  if (statusName.toLowerCase().includes("review")) return "magenta";
   switch (categoryKey) {
     case "new": return "blue";
     case "indeterminate": return "yellow";
@@ -66,7 +67,11 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
   // Calculate stats
   const total = tickets.length;
   const todo = tickets.filter(t => t.fields.status.statusCategory.key === "new").length;
-  const inProgress = tickets.filter(t => t.fields.status.statusCategory.key === "indeterminate").length;
+  const inReview = tickets.filter(t => t.fields.status.name.toLowerCase().includes("review")).length;
+  const inProgress = tickets.filter(t => 
+    t.fields.status.statusCategory.key === "indeterminate" && 
+    !t.fields.status.name.toLowerCase().includes("review")
+  ).length;
   
   // Zombie logic (simplified here, but typically checked in parent or detail pane)
   const isZombie = (t: JiraIssue) => {
@@ -75,6 +80,17 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
     return updated < fortyEightHoursAgo;
   };
   const zombies = tickets.filter(isZombie).length;
+
+  // Calculate windowed view
+  const WINDOW_SIZE = 18; // Maximum number of tickets to show
+  let start = 0;
+  if (tickets.length > WINDOW_SIZE) {
+    start = Math.max(0, selectedIndex - Math.floor(WINDOW_SIZE / 2));
+    if (start + WINDOW_SIZE > tickets.length) {
+      start = tickets.length - WINDOW_SIZE;
+    }
+  }
+  const visibleTickets = tickets.slice(start, start + WINDOW_SIZE);
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="dim" flexGrow={1}>
@@ -90,7 +106,14 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
       </Box>
 
       {/* Rows */}
-      {tickets.map((t, index) => {
+      {start > 0 && (
+        <Box paddingX={1}>
+          <Text color="dim">  ↑ {start} more tickets...</Text>
+        </Box>
+      )}
+
+      {visibleTickets.map((t, i) => {
+        const index = start + i;
         const isSelected = index === selectedIndex;
         const priority = t.fields.priority?.name || "None";
         const assignee = t.fields.assignee?.displayName?.split(" ")[0] || "Unassigned";
@@ -118,7 +141,7 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
               </Text>
             </Box>
             <Box width={COL_WIDTHS.status}>
-              <Text color={isSelected ? "black" : getStatusColor(statusCat)}>
+              <Text color={isSelected ? "black" : getStatusColor(statusCat, status)}>
                 {status}
               </Text>
             </Box>
@@ -146,11 +169,18 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
         );
       })}
 
+      {start + WINDOW_SIZE < tickets.length && (
+        <Box paddingX={1}>
+          <Text color="dim">  ↓ {tickets.length - (start + WINDOW_SIZE)} more tickets...</Text>
+        </Box>
+      )}
+
       {/* Stats Footer */}
       <Box paddingX={1} marginTop={1} borderStyle="single" borderTop={true} borderBottom={false} borderLeft={false} borderRight={false} borderColor="dim">
         <Text color="dim">Total: </Text><Text bold>{total}</Text>
         <Text color="dim"> | To-Do: </Text><Text color="blue">{todo}</Text>
         <Text color="dim"> | In Progress: </Text><Text color="yellow">{inProgress}</Text>
+        <Text color="dim"> | In Review: </Text><Text color="magenta">{inReview}</Text>
         <Text color="dim"> | Zombies: </Text><Text color="red">{zombies}</Text>
       </Box>
     </Box>
