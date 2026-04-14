@@ -14,7 +14,7 @@ export interface JiraIssue {
   key: string;
   fields: {
     summary: string;
-    description: string | { content: any[] } | null;
+    description: string | JiraAdfDoc | null;
     status: {
       name: string;
       statusCategory: {
@@ -35,6 +35,8 @@ export interface JiraIssue {
     };
     worklog?: {
       worklogs: JiraWorklog[];
+      total?: number;
+      maxResults?: number;
     };
     issuelinks: JiraIssueLink[];
   };
@@ -138,7 +140,7 @@ export async function fetchIssueDetails(issueKey: string): Promise<JiraIssue> {
     if (response.status === 404) {
       throw new Error(`Ticket "${issueKey}" not found. Please check the key and try again.`);
     }
-    
+
     const errorText = await response.text();
     throw new Error(`Failed to fetch issue details (${response.status}): ${errorText}`);
   }
@@ -207,16 +209,16 @@ export async function searchIssues(jql: string): Promise<JiraIssue[]> {
     body: JSON.stringify({
       jql,
       fields: [
-        "summary", 
-        "assignee", 
-        "status", 
-        "priority", 
-        "timeoriginalestimate", 
-        "timespent", 
-        "created", 
-        "updated", 
-        "comment", 
-        "worklog", 
+        "summary",
+        "assignee",
+        "status",
+        "priority",
+        "timeoriginalestimate",
+        "timespent",
+        "created",
+        "updated",
+        "comment",
+        "worklog",
         "issuelinks",
         "description"
       ]
@@ -236,7 +238,7 @@ export async function searchIssues(jql: string): Promise<JiraIssue[]> {
  * Searches for all manageable users
  */
 export async function fetchUsers(query: string = ""): Promise<JiraUser[]> {
-  const url = `${getBaseUrl()}/users/search?query=${encodeURIComponent(query)}`;
+  const url = `${getBaseUrl()}/users/search?query=${encodeURIComponent(query)}&maxResults=300`;
   const response = await fetch(url, {
     headers: {
       Authorization: getAuthHeader(),
@@ -250,23 +252,27 @@ export async function fetchUsers(query: string = ""): Promise<JiraUser[]> {
     throw new Error(`Failed to fetch users: ${response.status} ${errorText}`);
   }
 
-  const users = await response.json() as JiraUser[];
-  
-  // Filter out non-person accounts aggressively
+  const data = await response.json() as JiraUser[] | { values: JiraUser[] };
+  const users = Array.isArray(data) ? data : (data.values || []);
+
   const BANNED_KEYWORDS = [
-    "app", "automation", "assist", "outlook", "trello", 
-    "notifications", "spreadsheet", "bot", "connect", 
+    "app", "automation", "assist", "outlook", "trello",
+    "notifications", "spreadsheet", "bot", "connect",
     "service", "integration", "slack", "system"
   ];
 
-  return users.filter(u => {
+  return users.filter((u: JiraUser) => {
     if (!u.accountId) return false;
+
+    // Explicitly exclude apps
     if (u.accountType === "app") return false;
-    
-    const name = u.displayName.toLowerCase();
-    const isBot = BANNED_KEYWORDS.some(kw => name.includes(kw));
-    
-    return !isBot;
+
+    if (!u.emailAddress) return false;
+
+    const name = (u.displayName || "").toLowerCase();
+    const isBotName = BANNED_KEYWORDS.some(kw => name.includes(kw));
+
+    return !isBotName;
   });
 }
 
@@ -402,7 +408,7 @@ export async function fetchIssueWorklogs(issueIdOrKey: string): Promise<JiraWork
 export async function fetchUserWorklogs(accountId: string, sinceDate: string): Promise<JiraWorklog[]> {
   const jql = `worklogAuthor = "${accountId}" AND worklogDate >= "${sinceDate.split("T")[0]}"`;
   const issues = await searchIssues(jql);
-  
+
   const allWorklogs: JiraWorklog[] = [];
   const since = new Date(sinceDate);
 
@@ -410,10 +416,10 @@ export async function fetchUserWorklogs(accountId: string, sinceDate: string): P
   const issuesToFetchMore: string[] = [];
 
   for (const issue of issues) {
-    const wlData = (issue.fields as any).worklog;
+    const wlData = issue.fields.worklog;
     if (wlData && Array.isArray(wlData.worklogs)) {
       // Add existing worklogs from search results
-      wlData.worklogs.forEach((wl: any) => {
+      wlData.worklogs.forEach((wl: JiraWorklog) => {
         const wlDate = new Date(wl.started);
         if (wl.author.accountId === accountId && wlDate >= since) {
           allWorklogs.push(wl);
@@ -421,7 +427,10 @@ export async function fetchUserWorklogs(accountId: string, sinceDate: string): P
       });
 
       // Check if we need to fetch more
-      if (wlData.total > wlData.maxResults) {
+      const total = wlData.total || wlData.worklogs.length;
+      const maxResults = wlData.maxResults || 20;
+
+      if (total > maxResults) {
         issuesToFetchMore.push(issue.key);
       }
     } else {
@@ -437,7 +446,7 @@ export async function fetchUserWorklogs(accountId: string, sinceDate: string): P
     );
 
     extraWorklogResults.forEach(worklogs => {
-      worklogs.forEach(wl => {
+      worklogs.forEach((wl: JiraWorklog) => {
         const wlDate = new Date(wl.started);
         // Only add if not already present (checking ID)
         if (wl.author.accountId === accountId && wlDate >= since && !allWorklogs.find(existing => existing.id === wl.id)) {
