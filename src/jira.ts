@@ -77,31 +77,31 @@ export interface JiraTransition {
   };
 }
 
+export interface JiraAdfDoc {
+  type: string;
+  version: number;
+  content: {
+    type: string;
+    content?: {
+      text?: string;
+      type: string;
+    }[];
+  }[];
+}
+
 export interface JiraComment {
   id: string;
   created: string;
-  body: {
-    content: {
-      content: {
-        text: string;
-        type: string;
-      }[];
-      type: string;
-    }[];
-    type: string;
-    version: number;
-  };
+  author: JiraUser;
+  body: JiraAdfDoc;
 }
 
 export interface JiraWorklog {
   id: string;
-  comment: JiraComment | null;
+  comment: JiraAdfDoc | null;
   started: string;
   timeSpentSeconds: number;
-  author: {
-    accountId: string;
-    displayName: string;
-  };
+  author: JiraUser;
 }
 
 function getAuthHeader() {
@@ -394,4 +394,58 @@ export async function fetchIssueWorklogs(issueIdOrKey: string): Promise<JiraWork
 
   const data = await response.json() as { worklogs: JiraWorklog[] };
   return data.worklogs;
+}
+
+/**
+ * Fetches all worklogs for a user in a given date range across all issues
+ */
+export async function fetchUserWorklogs(accountId: string, sinceDate: string): Promise<JiraWorklog[]> {
+  const jql = `worklogAuthor = "${accountId}" AND worklogDate >= "${sinceDate.split("T")[0]}"`;
+  const issues = await searchIssues(jql);
+  
+  const allWorklogs: JiraWorklog[] = [];
+  const since = new Date(sinceDate);
+
+  // Issues that might have more worklogs than the 20 returned by default in search
+  const issuesToFetchMore: string[] = [];
+
+  for (const issue of issues) {
+    const wlData = (issue.fields as any).worklog;
+    if (wlData && Array.isArray(wlData.worklogs)) {
+      // Add existing worklogs from search results
+      wlData.worklogs.forEach((wl: any) => {
+        const wlDate = new Date(wl.started);
+        if (wl.author.accountId === accountId && wlDate >= since) {
+          allWorklogs.push(wl);
+        }
+      });
+
+      // Check if we need to fetch more
+      if (wlData.total > wlData.maxResults) {
+        issuesToFetchMore.push(issue.key);
+      }
+    } else {
+      // Fallback if worklog field was missing surprisingly
+      issuesToFetchMore.push(issue.key);
+    }
+  }
+
+  if (issuesToFetchMore.length > 0) {
+    // Fetch remaining worklogs in parallel
+    const extraWorklogResults = await Promise.all(
+      issuesToFetchMore.map(key => fetchIssueWorklogs(key))
+    );
+
+    extraWorklogResults.forEach(worklogs => {
+      worklogs.forEach(wl => {
+        const wlDate = new Date(wl.started);
+        // Only add if not already present (checking ID)
+        if (wl.author.accountId === accountId && wlDate >= since && !allWorklogs.find(existing => existing.id === wl.id)) {
+          allWorklogs.push(wl);
+        }
+      });
+    });
+  }
+
+  return allWorklogs;
 }

@@ -3,6 +3,7 @@ import { Box, Text, useInput, useApp } from "ink";
 import TextInput from "ink-text-input";
 import { QueryClientProvider, useQuery, useMutation, useQueryClient, QueryClient } from "@tanstack/react-query";
 import Spinner from "ink-spinner";
+import { startOfMonth, differenceInCalendarDays, setDate, addMonths } from "date-fns";
 import { TixTable } from "../components/TixTable";
 import { TixDetailPane } from "../components/TixDetailPane";
 import {
@@ -12,10 +13,11 @@ import {
   transitionIssue,
   postWorklog,
   updateIssueEstimate,
-  fetchActivityCountToday
+  fetchActivityCountToday,
+  fetchUserWorklogs
 } from "../jira";
-import { getAppConfig } from "../config";
-import { parseJiraTime, getNowWithOffset } from "../utils";
+import { getAppConfig, DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS } from "../config";
+import { parseJiraTime, getNowWithOffset, formatMinutes } from "../utils";
 
 interface TixViewProps {
   showAll?: boolean;
@@ -76,6 +78,27 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
     queryFn: () => fetchActivityCountToday(),
     enabled: !!accountId && !isUserSelecting
   });
+
+  const targetHours = parseInt(config.MONTHLY_TARGET_HOURS, 10) || DEFAULT_MONTHLY_TARGET_HOURS;
+  const calculationDay = parseInt(config.LAST_CALCULATION_DAY, 10) || DEFAULT_CALCULATION_DAY;
+
+  const { data: monthlyLogs } = useQuery({
+    queryKey: ["monthlyLogs", accountId],
+    queryFn: () => fetchUserWorklogs(accountId!, startOfMonth(new Date()).toISOString()),
+    enabled: !!accountId && !isUserSelecting
+  });
+
+  const totalMinutesAll = monthlyLogs?.reduce((sum, log) => sum + Math.round(log.timeSpentSeconds / 60), 0) || 0;
+
+  const getDaysRemaining = () => {
+    const now = new Date();
+    let targetDate = setDate(now, calculationDay);
+    if (now.getDate() > calculationDay) {
+      targetDate = addMonths(targetDate, 1);
+    }
+    return differenceInCalendarDays(targetDate, now);
+  };
+  const daysRemaining = getDaysRemaining();
 
   const activeTicket = tickets?.[selectedIndex];
 
@@ -373,6 +396,34 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
           </Box>
         )}
       </Box>
+
+      {accountId && (
+        <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1} flexDirection="column">
+          <Box>
+            <Text bold>Monthly Worklogs: </Text>
+            <Text color="yellow">{formatMinutes(totalMinutesAll)}</Text>
+            <Text color="dim"> ({totalMinutesAll}m) | </Text>
+            <Text color="magenta" bold>{((totalMinutesAll / (targetHours * 60)) * 100).toFixed(1)}%</Text>
+            <Text color="dim"> of {targetHours}h goal | </Text>
+            <Text color="yellow" bold>{daysRemaining}</Text>
+            <Text color="dim"> days left</Text>
+            {monthlyLogs === undefined && (
+              <Box marginLeft={2}>
+                <Spinner type="dots" />
+                <Text color="dim" italic> Calculating totals...</Text>
+              </Box>
+            )}
+          </Box>
+          <Box marginTop={1}>
+            <Text color="magenta">
+              {"█".repeat(Math.min(30, Math.floor((totalMinutesAll / (targetHours * 60)) * 30)))}
+              <Text color="dim">
+                {"░".repeat(Math.max(0, 30 - Math.floor((totalMinutesAll / (targetHours * 60)) * 30)))}
+              </Text>
+            </Text>
+          </Box>
+        </Box>
+      )}
 
       {/* Modals */}
       {activeModal === "log" && (
