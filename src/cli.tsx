@@ -167,15 +167,15 @@ prConfig
     }
   });
 
-// tix list [--all]
+// tix list [--peer]
 const tix = program.command("tix").description("Manage Jira tickets");
 
 tix
   .command("list")
   .description("List active Jira tickets")
-  .option("-a, --all", "Show searchable list of team members", false)
+  .option("-p, --peer", "Show searchable list of team members to observe", false)
   .action(async (options) => {
-    const { waitUntilExit } = render(<TixView showAll={options.all} />);
+    const { waitUntilExit } = render(<TixView isPeerMode={options.peer} />);
     await waitUntilExit();
   });
 

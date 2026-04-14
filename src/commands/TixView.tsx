@@ -20,7 +20,7 @@ import { getAppConfig, DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS } f
 import { parseJiraTime, getNowWithOffset, formatMinutes } from "../utils";
 
 interface TixViewProps {
-  showAll?: boolean;
+  isPeerMode?: boolean;
 }
 
 const queryClient = new QueryClient({
@@ -31,16 +31,16 @@ const queryClient = new QueryClient({
   },
 });
 
-const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
+const TixViewContent: React.FC<TixViewProps> = ({ isPeerMode = false }) => {
   const { exit } = useApp();
   const config = getAppConfig();
-  const [accountId, setAccountId] = useState<string | null>(showAll ? null : config.JIRA_ACCOUNT_ID);
-  const [selectedUserName, setSelectedUserName] = useState<string | null>(showAll ? null : "Me");
+  const [accountId, setAccountId] = useState<string | null>(isPeerMode ? null : config.JIRA_ACCOUNT_ID);
+  const [selectedUserName, setSelectedUserName] = useState<string | null>(isPeerMode ? null : "Me");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [filterQuery, setFilterQuery] = useState("");
   const [isFiltering, setIsFiltering] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
-  const [isUserSelecting, setIsUserSelecting] = useState(showAll && !accountId);
+  const [isUserSelecting, setIsUserSelecting] = useState(isPeerMode && !accountId);
 
   const [isSorting, setIsSorting] = useState(false);
   const [sortType, setSortType] = useState<"newest" | "oldest" | "priority" | "updated">("newest");
@@ -219,7 +219,7 @@ const TixViewContent: React.FC<TixViewProps> = ({ showAll = false }) => {
     }
 
     if (isUserSelecting) {
-      if (key.escape && !showAll) setIsUserSelecting(false);
+      if (key.escape && !isPeerMode) setIsUserSelecting(false);
       if (key.upArrow) setSelectedIndex(p => Math.max(0, p - 1));
       if (key.downArrow) setSelectedIndex(p => Math.min(filteredUsers.length - 1, p + 1));
       if (key.return) {

@@ -1,5 +1,6 @@
 import { getAppConfig } from "./config";
 import { Buffer } from "node:buffer";
+import { dbOps } from "./db";
 
 export interface JiraUser {
   accountId: string;
@@ -197,6 +198,20 @@ Response: ${errorText}`);
  * Searches for issues using JQL
  */
 export async function searchIssues(jql: string): Promise<JiraIssue[]> {
+  const CACHE_KEY = `TIX_CACHE_${Buffer.from(jql).toString("base64").substring(0, 50)}`;
+  const CACHE_TS_KEY = `${CACHE_KEY}_TS`;
+  const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
+  const cachedData = dbOps.getConfig(CACHE_KEY);
+  const cachedTs = dbOps.getConfig(CACHE_TS_KEY);
+
+  if (cachedData && cachedTs) {
+    const ts = parseInt(cachedTs, 10);
+    if (Date.now() - ts < CACHE_DURATION) {
+      return JSON.parse(cachedData);
+    }
+  }
+
   const url = `${getBaseUrl()}/search/jql`;
   const response = await fetch(url, {
     method: "POST",
@@ -231,13 +246,36 @@ export async function searchIssues(jql: string): Promise<JiraIssue[]> {
   }
 
   const data = await response.json() as { issues: JiraIssue[] };
-  return data.issues;
+  const issues = data.issues || [];
+
+  // Cache broadly
+  dbOps.setConfig(CACHE_KEY, JSON.stringify(issues));
+  dbOps.setConfig(CACHE_TS_KEY, Date.now().toString());
+
+  return issues;
 }
 
 /**
  * Searches for all manageable users
  */
 export async function fetchUsers(query: string = ""): Promise<JiraUser[]> {
+  const CACHE_KEY = "USERS_CACHE";
+  const CACHE_TS_KEY = "USERS_CACHE_TIMESTAMP";
+  const CACHE_DURATION = 2 * 24 * 60 * 60 * 1000; // 2 days
+
+  // Check persistent cache first if query is empty
+  if (!query) {
+    const cachedUsers = dbOps.getConfig(CACHE_KEY);
+    const cachedTs = dbOps.getConfig(CACHE_TS_KEY);
+    
+    if (cachedUsers && cachedTs) {
+      const ts = parseInt(cachedTs, 10);
+      if (Date.now() - ts < CACHE_DURATION) {
+        return JSON.parse(cachedUsers);
+      }
+    }
+  }
+
   const url = `${getBaseUrl()}/users/search?query=${encodeURIComponent(query)}&maxResults=300`;
   const response = await fetch(url, {
     headers: {
@@ -261,7 +299,7 @@ export async function fetchUsers(query: string = ""): Promise<JiraUser[]> {
     "service", "integration", "slack", "system"
   ];
 
-  return users.filter((u: JiraUser) => {
+  const filtered = users.filter((u: JiraUser) => {
     if (!u.accountId) return false;
 
     // Explicitly exclude apps
@@ -274,6 +312,14 @@ export async function fetchUsers(query: string = ""): Promise<JiraUser[]> {
 
     return !isBotName;
   });
+
+  // Save to cache if this was a broad fetch (no query)
+  if (!query) {
+    dbOps.setConfig(CACHE_KEY, JSON.stringify(filtered));
+    dbOps.setConfig(CACHE_TS_KEY, Date.now().toString());
+  }
+
+  return filtered;
 }
 
 /**

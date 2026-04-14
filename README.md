@@ -106,8 +106,8 @@ The `tix` command targets "Engineering Intelligence" over raw data mirroring. It
 # View your active tickets
 kelar tix list
 
-# View active tickets for a team member (select user)
-kelar tix list --all
+# View active tickets for a team member (select peer)
+kelar tix list --peer
 ```
 
 #### Observability Dashboard
