@@ -149,6 +149,13 @@ export async function fetchIssueDetails(issueKey: string): Promise<JiraIssue> {
   return response.json() as Promise<JiraIssue>;
 }
 
+/**
+ * Clears the local cache for ticket searches
+ */
+export function clearTixCache() {
+  dbOps.deleteConfigLike("TIX_CACHE_%");
+}
+
 export async function postWorklog(issueKey: string, minutes: number, comment: string, started: string): Promise<JiraWorklog> {
   const url = `${getBaseUrl()}/issue/${issueKey}/worklog`;
 
@@ -191,7 +198,9 @@ Status: ${response.status}
 Response: ${errorText}`);
   }
 
-  return response.json() as Promise<JiraWorklog>;
+  const result = await response.json() as JiraWorklog;
+  clearTixCache();
+  return result;
 }
 
 /**
@@ -366,6 +375,8 @@ export async function transitionIssue(issueKey: string, transitionId: string): P
     const errorText = await response.text();
     throw new Error(`Failed to transition ${issueKey}: ${response.status} ${errorText}`);
   }
+
+  clearTixCache();
 }
 
 /**
@@ -394,6 +405,8 @@ export async function updateIssueEstimate(issueKey: string, estimateSeconds: num
     const errorText = await response.text();
     throw new Error(`Failed to update estimate for ${issueKey}: ${response.status} ${errorText}`);
   }
+
+  clearTixCache();
 }
 
 /**

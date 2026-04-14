@@ -14,7 +14,8 @@ import {
   postWorklog,
   updateIssueEstimate,
   fetchActivityCountToday,
-  fetchUserWorklogs
+  fetchUserWorklogs,
+  clearTixCache
 } from "../jira";
 import { getAppConfig, DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS } from "../config";
 import { parseJiraTime, getNowWithOffset, formatMinutes } from "../utils";
@@ -268,7 +269,10 @@ const TixViewContent: React.FC<TixViewProps> = ({ isPeerMode = false }) => {
       }
     }
 
-    if (input === "r") refetchTickets();
+    if (input === "r") {
+      clearTixCache();
+      refetchTickets();
+    }
   });
 
   const handleUserSearchChange = (val: string) => {
