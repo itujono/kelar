@@ -1,16 +1,22 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { formatDistanceToNow } from "date-fns";
 import { type BitbucketPR } from "../bitbucket";
 import { getBitbucketConfig } from "../config";
+import { formatRelativeTime } from "../utils";
 
 interface PRTableProps {
   prs: BitbucketPR[];
   selectedIndex: number;
   showMeColumn?: boolean;
+  unresolvedCounts?: Record<number, number | null>;
 }
 
-export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex, showMeColumn = true }) => {
+export const PRTable: React.FC<PRTableProps> = ({ 
+  prs, 
+  selectedIndex, 
+  showMeColumn = true,
+  unresolvedCounts = {}
+}) => {
   const config = getBitbucketConfig();
   const myUsername = config.BITBUCKET_USERNAME?.toLowerCase();
   const myHandle = myUsername?.includes("@") ? myUsername.split("@")[0] : myUsername;
@@ -108,7 +114,7 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex, showMeColu
         const statusColor = isSelected ? "black" : (approvals > 0 ? "green" : "dim");
 
         const commentCount = pr.comment_count || 0;
-        const taskCount = pr.task_count || 0;
+        const unresolvedCount = unresolvedCounts[pr.id] ?? 0;
 
         const createdDate = new Date(pr.created_on);
         const updatedDate = new Date(pr.updated_on);
@@ -141,18 +147,18 @@ export const PRTable: React.FC<PRTableProps> = ({ prs, selectedIndex, showMeColu
               </Text>
             </Box>
             <Box width={COL_WIDTHS.unresolved}>
-              <Text color={isSelected ? "black" : (taskCount > 0 ? "red" : "dim")}>
-                {taskCount}
+              <Text color={isSelected ? "black" : (unresolvedCount > 0 ? "red" : "dim")}>
+                {unresolvedCount}
               </Text>
             </Box>
             <Box width={COL_WIDTHS.created}>
               <Text color={isSelected ? "black" : "dim"}>
-                {formatDistanceToNow(createdDate, { addSuffix: false }).replace("about ", "~ ")}
+                {formatRelativeTime(createdDate)}
               </Text>
             </Box>
             <Box width={COL_WIDTHS.updated}>
               <Text color={isSelected ? "black" : "dim"}>
-                {formatDistanceToNow(updatedDate, { addSuffix: false }).replace("about ", "~ ")}
+                {formatRelativeTime(updatedDate)}
               </Text>
             </Box>
 

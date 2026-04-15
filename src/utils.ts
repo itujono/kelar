@@ -1,3 +1,20 @@
+import { formatDistanceToNow } from "date-fns";
+
+/**
+ * Shortens relative time strings (e.g., "6 hours" -> "6h", "2 days" -> "2d")
+ */
+export function formatRelativeTime(date: Date): string {
+  return formatDistanceToNow(date, { addSuffix: false })
+    .replace(/about|almost|over/g, "")
+    .replace(/less than a minute/g, "1m")
+    .replace(/ minutes?/g, "m")
+    .replace(/ hours?/g, "h")
+    .replace(/ days?/g, "d")
+    .replace(/ months?/g, "mo")
+    .replace(/ years?/g, "y")
+    .replace(/\s+/g, "");
+}
+
 /**
  * Parses a Jira-standard time string (e.g., "45m", "1h", "1h 30m") into total minutes.
  */

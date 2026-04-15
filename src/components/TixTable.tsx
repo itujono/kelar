@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { formatDistanceToNow } from "date-fns";
+import { formatRelativeTime } from "../utils";
 import { type JiraIssue } from "../jira";
 
 interface TixTableProps {
@@ -164,12 +164,12 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
             </Box>
             <Box width={COL_WIDTHS.created}>
               <Text color={isSelected ? "black" : "dim"}>
-                {formatDistanceToNow(created, { addSuffix: false }).replace("about ", "~ ")}
+                {formatRelativeTime(created)}
               </Text>
             </Box>
             <Box width={COL_WIDTHS.updated}>
               <Text color={isSelected ? "black" : "dim"}>
-                {formatDistanceToNow(new Date(t.fields.updated), { addSuffix: false }).replace("about ", "~ ")}
+                {formatRelativeTime(new Date(t.fields.updated))}
               </Text>
             </Box>
           </Box>

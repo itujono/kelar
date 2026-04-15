@@ -5,7 +5,7 @@ import { QueryClientProvider, useQuery, useQueries } from "@tanstack/react-query
 import Spinner from "ink-spinner";
 import { PRTable } from "../components/PRTable";
 import { PRDetailPane } from "../components/PRDetailPane";
-import { fetchPRs, fetchPRActivity, calculateVelocity, queryClient } from "../bitbucket";
+import { fetchPRs, fetchPRActivity, fetchPRComments, calculateVelocity, queryClient } from "../bitbucket";
 import { isBitbucketConfigValid } from "../config";
 
 interface PRViewProps {
@@ -55,13 +55,37 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
     }))
   });
 
+  const commentsQueries = useQueries({
+    queries: filteredPrs.map(pr => ({
+      queryKey: ["pr", pr.id, "comments"],
+      queryFn: () => fetchPRComments(pr.id),
+      staleTime: 1000 * 60 * 5,
+    }))
+  });
+
+  const unresolvedCounts = Object.fromEntries(
+    commentsQueries
+      .map((query, index) => {
+        const pr = filteredPrs[index];
+        if (!pr) return null;
+
+        const comments = query.data;
+        if (!comments) return [pr.id, null];
+
+        const peerComments = comments.filter(c => c.user.account_id !== pr.author.account_id);
+        const count = peerComments.filter(c => !c.is_resolved).length;
+        return [pr.id, count];
+      })
+      .filter((entry): entry is [number, number | null] => entry !== null)
+  );
+
   const sortedPrs = [...filteredPrs].sort((a, b) => {
     const timeA = new Date(a.created_on).getTime();
     const timeB = new Date(b.created_on).getTime();
 
     if (sortBy === "newest") return timeB - timeA;
     if (sortBy === "oldest" || sortBy === "longest") return timeA - timeB;
-    
+
     if (sortBy === "shortest") {
       const actA = queryClient.getQueryData(["pr", a.id, "activity"]) as any[];
       const actB = queryClient.getQueryData(["pr", b.id, "activity"]) as any[];
@@ -69,7 +93,7 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
       const velB = actB ? calculateVelocity(b, actB).pickupLatency : Infinity;
       return (velA ?? Infinity) - (velB ?? Infinity);
     }
-    
+
     return 0;
   });
 
@@ -216,7 +240,12 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
 
       <Box flexDirection="row" minHeight={20}>
         <Box flexGrow={1} marginRight={2}>
-          <PRTable prs={sortedPrs} selectedIndex={selectedIndex} showMeColumn={showAll} />
+          <PRTable
+            prs={sortedPrs}
+            selectedIndex={selectedIndex}
+            showMeColumn={showAll}
+            unresolvedCounts={unresolvedCounts}
+          />
         </Box>
 
         {activePR && <PRDetailPane pr={activePR} />}
