@@ -61,7 +61,7 @@ kelar log new IMM-123 45m
 #### Viewing Summaries
 ```bash
 # Available periods: day, week, month
-kelar log view month
+kelar log list month
 ```
 - **Goal Tracking**: Shows progress bars, deadline countdowns, and percentages.
 - **Interactive Filtering**: Press **`/`** to filter by ticket, summary, or type.

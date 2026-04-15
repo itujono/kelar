@@ -30,15 +30,20 @@ log
     await waitUntilExit();
   });
 
-// log view [period]
+// log list [period]
 log
-  .command("view")
-  .argument("[period]", "Period to view (day, week, month)", "day")
+  .command("list")
+  .argument("[period]", "Period to view (day, week, month)", "month")
   .option("-s, --sort <type>", "Sort by (longest, shortest, newest, oldest)", "oldest")
   .action(async (period, options) => {
     const { waitUntilExit } = render(<LogView period={period} sortBy={options.sort as SortType} />);
     await waitUntilExit();
   });
+
+log.command("view").argument("[period]", "Period to view (day, week, month)", "month").action(async (period) => {
+  const { waitUntilExit } = render(<LogView period={period} sortBy="oldest" />);
+  await waitUntilExit();
+});
 
 // log capture [period]
 log
@@ -55,12 +60,17 @@ log
 const config = log.command("config").description("Manage configuration");
 
 config
-  .command("view")
+  .command("list")
   .description("View current configuration")
   .action(async () => {
     const { waitUntilExit } = render(<LogConfig />);
     await waitUntilExit();
   });
+
+config.command("view").action(async () => {
+  const { waitUntilExit } = render(<LogConfig />);
+  await waitUntilExit();
+});
 
 config
   .command("set")
