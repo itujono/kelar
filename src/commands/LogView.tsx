@@ -36,16 +36,70 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
   const [isFiltering, setIsFiltering] = useState(false);
   const [capturedFile, setCapturedFile] = useState<string | null>(null);
 
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isSorting, setIsSorting] = useState(false);
+  const [sortType, setSortType] = useState<SortType>(sortBy);
+  const [sortIndex, setSortIndex] = useState(0);
+
+  const sortOptions = [
+    { label: "Newest", value: "newest" as const },
+    { label: "Oldest", value: "oldest" as const },
+    { label: "Longest", value: "longest" as const },
+    { label: "Shortest", value: "shortest" as const },
+  ];
+
   useInput((input, key) => {
-    if (input === "/" && !isFiltering) {
-      setIsFiltering(true);
-      setFilterQuery("");
+    if (isSorting) {
+      if (key.escape) setIsSorting(false);
+      if (key.upArrow) setSortIndex(prev => Math.max(0, prev - 1));
+      if (key.downArrow) setSortIndex(prev => Math.min(sortOptions.length - 1, prev + 1));
+      if (key.return) {
+        const option = sortOptions[sortIndex];
+        if (option) {
+          setSortType(option.value);
+        }
+        setIsSorting(false);
+      }
       return;
     }
 
-    if (key.escape) {
-      setIsFiltering(false);
+    if (isFiltering) {
+      if (key.escape) {
+        setIsFiltering(false);
+        setFilterQuery("");
+      }
+      if (key.return) setIsFiltering(false);
+      return;
+    }
+
+    if (input === "q") exit();
+    if (input === "/") {
+      setIsFiltering(true);
       setFilterQuery("");
+      setSelectedIndex(0);
+      return;
+    }
+    if (input === "s") {
+      setIsSorting(true);
+      setSortIndex(0);
+      return;
+    }
+    if (input === "r") {
+      sync();
+      return;
+    }
+
+    if (key.upArrow) setSelectedIndex(p => Math.max(0, p - 1));
+    if (key.downArrow) setSelectedIndex(p => Math.min(sortedLogs.length - 1, p + 1));
+
+    if (input === "o") {
+      const activeLog = sortedLogs[selectedIndex];
+      if (activeLog && activeLog.is_jira) {
+        const domain = config.JIRA_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
+        const url = `https://${domain}/browse/${activeLog.identifier}`;
+        // @ts-ignore
+        Bun.spawn(["open", url]);
+      }
     }
 
     if (key.ctrl && (input === "u" || input === "\u0015")) {
@@ -164,7 +218,7 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
     const timeA = new Date(a.created_at).getTime();
     const timeB = new Date(b.created_at).getTime();
 
-    switch (sortBy) {
+    switch (sortType) {
       case "newest": return timeB - timeA;
       case "longest": return b.minutes - a.minutes;
       case "shortest": return a.minutes - b.minutes;
@@ -274,10 +328,17 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
           <Table
             data={data}
             compact
+            selectedIndex={selectedIndex}
             renderCell={(col, val, row) => {
               const isPersonal = row.Type === "Personal";
+              const isSelected = data.indexOf(row) === selectedIndex;
+              
               if (isPersonal && (col === "Identifier" || col === "Type")) {
-                return <Text color="green">{val}</Text>;
+                return (
+                  <Text color={isSelected ? "black" : "green"}>
+                    {val}
+                  </Text>
+                );
               }
               return val;
             }}
@@ -315,35 +376,59 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
       )}
 
       <Box marginTop={1} flexDirection="column">
-        {isFiltering && (
-          <Box borderStyle="single" borderColor="yellow" paddingX={1} marginBottom={1} flexDirection="column">
-            <Box>
-              <Box backgroundColor="yellow" paddingX={1} marginRight={1}>
-                <Text bold color="black"> FILTER MODE </Text>
+        {status !== "SYNCING" && (
+          isSorting ? (
+            <Box borderStyle="single" borderColor="cyan" paddingX={1} marginBottom={1} flexDirection="column">
+              <Box backgroundColor="cyan" paddingX={1} marginRight={1} marginBottom={1} width={12}>
+                <Text bold color="black"> SORT BY </Text>
               </Box>
-              <TextInput
-                value={filterQuery}
-                onChange={handleFilterChange}
-                onSubmit={() => setIsFiltering(false)}
-                placeholder="Start typing to filter..."
-              />
+              {sortOptions.map((opt, i) => (
+                <Box key={opt.value}>
+                  <Text color={i === sortIndex ? "cyan" : "dim"}>
+                    {i === sortIndex ? "❯" : " "} {opt.label}
+                    {sortType === opt.value ? " (active)" : ""}
+                  </Text>
+                </Box>
+              ))}
+              <Box marginTop={1}>
+                <Text bold color="cyan">Enter</Text>
+                <Text color="dim"> to apply | </Text>
+                <Text bold color="cyan">Esc</Text>
+                <Text color="dim"> to close</Text>
+              </Box>
             </Box>
-            <Box marginTop={1}>
-              <Text color="yellow"> {filteredLogs.length} matches | </Text>
-              <Text bold color="cyan">Enter</Text>
-              <Text color="dim"> to keep | </Text>
-              <Text bold color="cyan">Esc</Text>
-              <Text color="dim"> to reset</Text>
+          ) : isFiltering ? (
+            <Box borderStyle="single" borderColor="yellow" paddingX={1} marginBottom={1} flexDirection="column">
+              <Box>
+                <Box backgroundColor="yellow" paddingX={1} marginRight={1}>
+                  <Text bold color="black"> FILTER </Text>
+                </Box>
+                <TextInput
+                  value={filterQuery}
+                  onChange={handleFilterChange}
+                  onSubmit={() => setIsFiltering(false)}
+                  placeholder="Start typing to filter..."
+                />
+              </Box>
+              <Box marginTop={1}>
+                <Text color="yellow"> {filteredLogs.length} matches | </Text>
+                <Text bold color="cyan">Enter</Text>
+                <Text color="dim"> to keep | </Text>
+                <Text bold color="cyan">Esc</Text>
+                <Text color="dim"> to reset</Text>
+              </Box>
             </Box>
-          </Box>
-        )}
-
-        {!isCaptureMode && !isFiltering && status !== "SYNCING" && logs.length > 0 && (
-          <Box>
-            <Text color="dim">Press </Text>
-            <Text bold color="cyan">/</Text>
-            <Text color="dim"> to filter tasks</Text>
-          </Box>
+          ) : (
+            <Box>
+              <Text color="dim">Keys: </Text>
+              <Text bold color="white">↑/↓</Text><Text color="dim"> navigate | </Text>
+              <Text bold color="white">o</Text><Text color="dim"> open | </Text>
+              <Text bold color="white">s</Text><Text color="dim"> sort | </Text>
+              <Text bold color="white">/</Text><Text color="dim"> filter | </Text>
+              <Text bold color="white">r</Text><Text color="dim"> refetch | </Text>
+              <Text bold color="white">q</Text><Text color="dim"> quit</Text>
+            </Box>
+          )
         )}
       </Box>
     </Box>

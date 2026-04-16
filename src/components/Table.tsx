@@ -5,10 +5,11 @@ interface TableProps<T> {
   data: T[];
   columns?: (keyof T)[];
   compact?: boolean;
+  selectedIndex?: number;
   renderCell?: (column: keyof T, value: any, row: T) => React.ReactNode;
 }
 
-export function Table<T extends Record<string, any>>({ data, columns, compact, renderCell }: TableProps<T>) {
+export function Table<T extends Record<string, any>>({ data, columns, compact, selectedIndex, renderCell }: TableProps<T>) {
   if (data.length === 0) return null;
 
   const allColumns = columns || (Object.keys(data[0] || {}) as (keyof T)[]);
@@ -65,25 +66,41 @@ export function Table<T extends Record<string, any>>({ data, columns, compact, r
       {renderLine("├", "┼", "┤", "─")}
 
       {/* Data Rows */}
-      {data.map((row, rowIndex) => (
-        <React.Fragment key={rowIndex}>
-          <Box>
-            <Text color="dim">│</Text>
-            {allColumns.map((col, i) => (
-              <React.Fragment key={String(col)}>
-                <Box width={colWidths[i]} paddingX={1}>
-                  <Text>
-                    {renderCell ? renderCell(col, row[col], row) : (row[col] ?? "")}
-                  </Text>
-                </Box>
-                <Text color="dim">│</Text>
-              </React.Fragment>
-            ))}
-          </Box>
-          {/* Internal Divider (between rows) */}
-          {(!compact && rowIndex < data.length - 1) ? renderLine("├", "┼", "┤", "─") : null}
-        </React.Fragment>
-      ))}
+      {data.map((row, rowIndex) => {
+        const isSelected = rowIndex === selectedIndex;
+        return (
+          <React.Fragment key={rowIndex}>
+            <Box backgroundColor={isSelected ? "white" : undefined}>
+              <Text color={isSelected ? "black" : "dim"}>│</Text>
+              {allColumns.map((col, i) => (
+                <React.Fragment key={String(col)}>
+                  <Box width={colWidths[i]} paddingX={1}>
+                    <Box>
+                      {renderCell ? (
+                        <Box>
+                          {/* We wrap renderCell to ensure we can force its child Text to be black if needed */}
+                          {/* However, the renderCell itself might return a <Text> which won't inherit the color automatically if it sets its own */}
+                          {/* But most of our renderCells use the inherited color or we can fix them in the caller */}
+                          <Text color={isSelected ? "black" : undefined}>
+                            {renderCell(col, row[col], row)}
+                          </Text>
+                        </Box>
+                      ) : (
+                        <Text color={isSelected ? "black" : undefined}>
+                          {row[col] ?? ""}
+                        </Text>
+                      )}
+                    </Box>
+                  </Box>
+                  <Text color={isSelected ? "black" : "dim"}>│</Text>
+                </React.Fragment>
+              ))}
+            </Box>
+            {/* Internal Divider (between rows) */}
+            {(!compact && rowIndex < data.length - 1) ? renderLine("├", "┼", "┤", "─") : null}
+          </React.Fragment>
+        );
+      })}
 
       {/* Bottom Border */}
       {renderLine("└", "┴", "┘", "─")}
