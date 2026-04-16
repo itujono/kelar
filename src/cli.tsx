@@ -36,7 +36,7 @@ log
   .alias("view")
   .description("List work logs for a period")
   .argument("[period]", "Period to view (day, week, month)", "month")
-  .option("-s, --sort <type>", "Sort by (longest, shortest, newest, oldest)", "oldest")
+  .option("-s, --sort <type>", "Sort by (longest, shortest, newest, oldest)", "newest")
   .action(async (period, options) => {
     const { waitUntilExit } = render(<LogView period={period} sortBy={options.sort as SortType} />);
     await waitUntilExit();
@@ -47,7 +47,7 @@ log
   .command("capture")
   .description("Capture a snapshot of the work log table for sharing")
   .argument("[period]", "Period to view (day, week, month)", "day")
-  .option("-s, --sort <type>", "Sort by (longest, shortest, newest, oldest)", "oldest")
+  .option("-s, --sort <type>", "Sort by (longest, shortest, newest, oldest)", "newest")
   .action(async (period, options) => {
     const { waitUntilExit } = render(<LogView period={period} sortBy={options.sort as SortType} isCaptureMode />);
     await waitUntilExit();

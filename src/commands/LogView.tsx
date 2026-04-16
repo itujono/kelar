@@ -23,7 +23,7 @@ interface LogViewProps {
 type ViewStatus = "IDLE" | "SYNCING" | "SUCCESS" | "ERROR";
 const CACHE_THRESHOLD_MINUTES = 5;
 
-export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "oldest", isCaptureMode = false }) => {
+export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "newest", isCaptureMode = false }) => {
   const { exit } = useApp();
   const config = getAppConfig();
   const targetHours = parseInt(config.MONTHLY_TARGET_HOURS, 10) || DEFAULT_MONTHLY_TARGET_HOURS;
@@ -228,7 +228,17 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
     }
   });
 
-  const data = sortedLogs.map(log => ({
+  const WINDOW_SIZE = 18;
+  let startIndex = 0;
+  if (sortedLogs.length > WINDOW_SIZE) {
+    startIndex = Math.max(0, selectedIndex - Math.floor(WINDOW_SIZE / 2));
+    if (startIndex + WINDOW_SIZE > sortedLogs.length) {
+      startIndex = sortedLogs.length - WINDOW_SIZE;
+    }
+  }
+  const visibleLogs = sortedLogs.slice(startIndex, startIndex + WINDOW_SIZE);
+
+  const data = visibleLogs.map(log => ({
     Date: format(new Date(log.created_at), "dd MMM"),
     Identifier: log.identifier,
     Label: log.label || "",
@@ -313,10 +323,14 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
 
   return (
     <Box flexDirection="column" padding={1}>
-      <Box marginBottom={1} flexDirection="row" gap={1}>
+      <Box marginBottom={1} flexDirection="row">
         <Text bold color="cyan">Work Log Summary ({period.toUpperCase()})</Text>
+        <Text color="dim"> | Sort: </Text>
+        <Text color="yellow">{sortOptions.find(o => o.value === sortType)?.label || sortType}</Text>
+        <Text color="dim"> | User: </Text>
+        <Text color="magenta" bold>Me</Text>
         {status === "SYNCING" && (
-          <Box>
+          <Box marginLeft={2}>
             <Spinner type="dots" />
             <Text italic> Syncing with Jira...</Text>
           </Box>
@@ -325,14 +339,19 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
 
       {logs.length > 0 ? (
         <>
+          {startIndex > 0 && (
+            <Box paddingX={1}>
+              <Text color="dim">  ↑ {startIndex} more logs...</Text>
+            </Box>
+          )}
           <Table
             data={data}
             compact
-            selectedIndex={selectedIndex}
+            selectedIndex={selectedIndex - startIndex}
             renderCell={(col, val, row) => {
               const isPersonal = row.Type === "Personal";
-              const isSelected = data.indexOf(row) === selectedIndex;
-              
+              const isSelected = data.indexOf(row) === (selectedIndex - startIndex);
+
               if (isPersonal && (col === "Identifier" || col === "Type")) {
                 return (
                   <Text color={isSelected ? "black" : "green"}>
@@ -343,6 +362,11 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "olde
               return val;
             }}
           />
+          {startIndex + WINDOW_SIZE < sortedLogs.length && (
+            <Box paddingX={1}>
+              <Text color="dim">  ↓ {sortedLogs.length - (startIndex + WINDOW_SIZE)} more logs...</Text>
+            </Box>
+          )}
           <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1} flexDirection="column">
             <Box>
               <Text bold>Grand Total: </Text>
