@@ -16,31 +16,31 @@ export function formatRelativeTime(date: Date): string {
 }
 
 /**
- * Parses a Jira-standard time string (e.g., "45m", "1h", "1h 30m") into total minutes.
+ * Parses a Jira-standard time string (e.g., "45m", "1h", "1h 30m", "1.5h") into total minutes.
  */
 export function parseJiraTime(timeStr: string): number {
-  const hoursMatch = timeStr.match(/(\d+)h/i);
-  const minsMatch = timeStr.match(/(\d+)m/i);
+  const hoursMatch = timeStr.match(/([\d.]+)h/i);
+  const minsMatch = timeStr.match(/([\d.]+)m/i);
 
   let totalMinutes = 0;
 
   if (hoursMatch) {
-    totalMinutes += parseInt(hoursMatch[1] || "0", 10) * 60;
+    totalMinutes += parseFloat(hoursMatch[1] || "0") * 60;
   }
 
   if (minsMatch) {
-    totalMinutes += parseInt(minsMatch[1] || "0", 10);
+    totalMinutes += parseFloat(minsMatch[1] || "0");
   }
 
   if (!hoursMatch && !minsMatch) {
     // If it's just a number, assume minutes
-    const numeric = parseInt(timeStr, 10);
+    const numeric = parseFloat(timeStr);
     if (!isNaN(numeric)) {
       totalMinutes = numeric;
     }
   }
 
-  return totalMinutes;
+  return Math.round(totalMinutes);
 }
 
 /**

@@ -9,7 +9,7 @@ export const CONFIG_KEYS = {
   MONTHLY_TARGET_HOURS: "MONTHLY_TARGET_HOURS",
   LAST_CALCULATION_DAY: "LAST_CALCULATION_DAY",
 } as const;
- 
+
 export const BITBUCKET_CONFIG_KEYS = {
   BITBUCKET_EMAIL: "BITBUCKET_EMAIL",
   BITBUCKET_USERNAME: "BITBUCKET_USERNAME",
@@ -18,12 +18,8 @@ export const BITBUCKET_CONFIG_KEYS = {
   BITBUCKET_REPO_SLUG: "BITBUCKET_REPO_SLUG",
 } as const;
 
-
-
-
 export type ConfigKey = keyof typeof CONFIG_KEYS;
 export type BitbucketConfigKey = keyof typeof BITBUCKET_CONFIG_KEYS;
-
 
 export const DEFAULT_MONTHLY_TARGET_HOURS = 180;
 export const DEFAULT_CALCULATION_DAY = 25;

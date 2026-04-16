@@ -334,7 +334,7 @@ const TixViewContent: React.FC<TixViewProps> = ({ isPeerMode = false }) => {
   return (
     <Box flexDirection="column" padding={1}>
       <Box marginBottom={1}>
-        <Text bold color="cyan">Jira Engineering Intelligence</Text>
+        <Text bold color="cyan">Jira Yuuuk</Text>
         <Text color="dim"> | Sort: </Text>
         <Text color="yellow">{sortOptions.find(o => o.value === sortType)?.label || sortType}</Text>
         {selectedUserName && (

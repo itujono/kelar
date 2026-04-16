@@ -33,17 +33,14 @@ log
 // log list [period]
 log
   .command("list")
+  .alias("view")
+  .description("List work logs for a period")
   .argument("[period]", "Period to view (day, week, month)", "month")
   .option("-s, --sort <type>", "Sort by (longest, shortest, newest, oldest)", "oldest")
   .action(async (period, options) => {
     const { waitUntilExit } = render(<LogView period={period} sortBy={options.sort as SortType} />);
     await waitUntilExit();
   });
-
-log.command("view").argument("[period]", "Period to view (day, week, month)", "month").action(async (period) => {
-  const { waitUntilExit } = render(<LogView period={period} sortBy="oldest" />);
-  await waitUntilExit();
-});
 
 // log capture [period]
 log
@@ -61,16 +58,12 @@ const config = log.command("config").description("Manage configuration");
 
 config
   .command("list")
+  .alias("view")
   .description("View current configuration")
   .action(async () => {
     const { waitUntilExit } = render(<LogConfig />);
     await waitUntilExit();
   });
-
-config.command("view").action(async () => {
-  const { waitUntilExit } = render(<LogConfig />);
-  await waitUntilExit();
-});
 
 config
   .command("set")
@@ -120,7 +113,8 @@ pr
 const prConfig = pr.command("config").description("Manage Bitbucket configuration");
 
 prConfig
-  .command("view")
+  .command("list")
+  .alias("view")
   .description("View Bitbucket configuration")
   .action(async () => {
     const config = getBitbucketConfig();
@@ -149,8 +143,6 @@ prConfig
   .description("Update a Bitbucket configuration value")
   .argument("<key>", "Config key (BITBUCKET_EMAIL, BITBUCKET_USERNAME, BITBUCKET_TOKEN, BITBUCKET_WORKSPACE, BITBUCKET_REPO_SLUG)")
   .argument("<value>", "New value")
-
-
   .action((key, value) => {
     const upperKey = key.toUpperCase() as BitbucketConfigKey;
     if (BITBUCKET_CONFIG_KEYS[upperKey]) {
