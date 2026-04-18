@@ -3,8 +3,8 @@ import { Box, Text, useInput, useApp } from "ink";
 import TextInput from "ink-text-input";
 import { QueryClientProvider, useQuery, useQueries } from "@tanstack/react-query";
 import Spinner from "ink-spinner";
-import { PRTable } from "../components/PRTable";
-import { PRDetailPane } from "../components/PRDetailPane";
+import { PRTable } from "../components/pr/PRTable";
+import { PRDetailPane } from "../components/pr/PRDetailPane";
 import { fetchPRs, fetchPRActivity, fetchPRComments, fetchMe, calculateVelocity, queryClient, type BitbucketUser } from "../bitbucket";
 import { isBitbucketConfigValid, getBitbucketConfig } from "../config";
 

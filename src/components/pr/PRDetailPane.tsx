@@ -2,7 +2,7 @@ import React from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import { useQuery } from "@tanstack/react-query";
-import { getBitbucketConfig } from "../config";
+import { getBitbucketConfig } from "../../config";
 import {
   type BitbucketPR,
   type BitbucketUser,
@@ -10,7 +10,7 @@ import {
   fetchPRComments,
   fetchMe,
   calculateVelocity
-} from "../bitbucket";
+} from "../../bitbucket";
 
 
 interface PRDetailPaneProps {
@@ -73,7 +73,7 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
       account === myHandle
     );
   };
-  
+
   const myPeerComments = comments?.filter(c => !isMe(c.user)) || [];
 
   const resolvedCount = myPeerComments.filter(c => c.is_resolved).length;

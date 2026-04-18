@@ -1,24 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { Text, Box, useInput, useApp } from "ink";
-import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
 import { startOfDay, startOfWeek, startOfMonth, format, differenceInCalendarDays, addMonths, setDate } from "date-fns";
-import { Table } from "../components/Table";
 import { dbOps } from "../db";
-import { formatMinutes } from "../utils";
 import { searchIssues, fetchIssueWorklogs } from "../jira";
 import { DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS, getAppConfig, isConfigValid } from "../config";
 import { generateHtmlReport } from "../report";
+import { LogTable } from "../components/log/LogTable";
+import { LogControls } from "../components/log/LogControls";
 
 export type SortType = "longest" | "shortest" | "newest" | "oldest";
 export type PeriodType = "day" | "week" | "month";
-
 interface LogViewProps {
   period?: PeriodType;
   sortBy?: SortType;
   isCaptureMode?: boolean;
 }
-
 
 type ViewStatus = "IDLE" | "SYNCING" | "SUCCESS" | "ERROR";
 const CACHE_THRESHOLD_MINUTES = 5;
@@ -226,24 +223,6 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "newe
     }
   });
 
-  const WINDOW_SIZE = 18;
-  let startIndex = 0;
-  if (sortedLogs.length > WINDOW_SIZE) {
-    startIndex = Math.max(0, selectedIndex - Math.floor(WINDOW_SIZE / 2));
-    if (startIndex + WINDOW_SIZE > sortedLogs.length) {
-      startIndex = sortedLogs.length - WINDOW_SIZE;
-    }
-  }
-  const visibleLogs = sortedLogs.slice(startIndex, startIndex + WINDOW_SIZE);
-
-  const data = visibleLogs.map(log => ({
-    Date: format(new Date(log.created_at), "dd MMM"),
-    Identifier: log.identifier,
-    Label: log.label || "",
-    Type: log.is_jira ? "Jira" : "Personal",
-    Time: formatMinutes(log.minutes)
-  }));
-
   const totalMinutesAll = filteredLogs.reduce((sum, log) => sum + log.minutes, 0);
   const personalCount = filteredLogs.filter(log => !log.is_jira).length;
 
@@ -257,14 +236,6 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "newe
   };
 
   const daysRemaining = getDaysRemaining();
-
-  const getEmptyMessage = () => {
-    const now = new Date();
-    if (period === "day") return "No logs yet today. Ready to crush some tasks?";
-    if (period === "week" && now.getDay() === 1) return "The week has just started! Time to build some momentum.";
-    if (period === "month" && now.getDate() <= 3) return "Fresh month alert! Let's get a head start on that goal.";
-    return `No logs found for this ${period} in Jira.`;
-  };
 
   useEffect(() => {
     if (isCaptureMode && status === "SUCCESS") {
@@ -322,150 +293,45 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "newe
   return (
     <Box flexDirection="column" padding={1}>
       <Box marginBottom={1} flexDirection="row">
-        <Text bold color="cyan">Work Log Summary ({period.toUpperCase()})</Text>
-        <Text color="dim"> | Sort: </Text>
-        <Text color="yellow">{sortOptions.find(o => o.value === sortType)?.label || sortType}</Text>
-        <Text color="dim"> | User: </Text>
-        <Text color="magenta" bold>Me</Text>
-        {status === "SYNCING" && (
-          <Box marginLeft={2}>
+        {status === "SYNCING" ? (
+          <Box>
             <Spinner type="dots" />
             <Text italic> Syncing with Jira...</Text>
           </Box>
+        ) : (
+          <>
+            <Text bold color="cyan">Work Log Summary ({period.toUpperCase()})</Text>
+            <Text color="dim"> | Sort: </Text>
+            <Text color="yellow">{sortOptions.find(o => o.value === sortType)?.label || sortType}</Text>
+            <Text color="dim"> | User: </Text>
+            <Text color="magenta" bold>Me</Text>
+          </>
         )}
       </Box>
 
-      {logs.length > 0 ? (
-        <>
-          <Table
-            data={data}
-            columns={["Date", "Identifier", "Label", "Type", "Time"]}
-            columnWidths={{
-              Date: 10,
-              Identifier: 30,
-              Label: 120,
-              Type: 12,
-              Time: 10
-            }}
-            compact
-            selectedIndex={selectedIndex - startIndex}
-            header={startIndex > 0 ? (
-              <Text color="dim">  ↑ {startIndex} more logs...</Text>
-            ) : undefined}
-            footer={startIndex + WINDOW_SIZE < sortedLogs.length ? (
-              <Box paddingX={1}>
-                <Text color="dim">  ↓ {sortedLogs.length - (startIndex + WINDOW_SIZE)} more logs...</Text>
-              </Box>
-            ) : undefined}
-            renderCell={(col, val, row) => {
-              const isPersonal = row.Type === "Personal";
-              const isSelected = data.indexOf(row) === (selectedIndex - startIndex);
+      <LogTable
+        logs={sortedLogs}
+        selectedIndex={selectedIndex}
+        period={period}
+        targetHours={targetHours}
+        daysRemaining={daysRemaining}
+        totalMinutes={totalMinutesAll}
+        personalCount={personalCount}
+        isLoading={status === "SYNCING"}
+      />
 
-              if (isPersonal && (col === "Identifier" || col === "Type")) {
-                return (
-                  <Text color={isSelected ? "black" : "green"}>
-                    {val}
-                  </Text>
-                );
-              }
-              if (isSelected) return val;
-              if (col === "Date" || col === "Identifier") {
-                return <Text color="dim">{val}</Text>;
-              }
-              if (col === "Time") {
-                return <Text color="yellow">{val}</Text>;
-              }
-              return val;
-            }}
-          />
-          <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1} flexDirection="column">
-            <Box>
-              <Text bold>Grand Total: </Text>
-              <Text color="yellow">{formatMinutes(totalMinutesAll)}</Text>
-              <Text color="dim"> ({totalMinutesAll}m) | </Text>
-              {period === "month" && (
-                <Text>
-                  <Text color="magenta" bold>{((totalMinutesAll / (targetHours * 60)) * 100).toFixed(1)}%</Text>
-                  <Text color="dim"> of {targetHours}h goal | </Text>
-                  <Text color="yellow" bold>{daysRemaining}</Text>
-                  <Text color="dim"> days left</Text>
-                </Text>
-              )}
-              <Text color="dim"> | </Text>
-              <Text color="cyan">{filteredLogs.length} entries ({personalCount} personal items)</Text>
-            </Box>
-            {period === "month" && (
-              <Box marginTop={1}>
-                <Text color="magenta">
-                  {"█".repeat(Math.min(30, Math.floor((totalMinutesAll / (targetHours * 60)) * 30)))}
-                  <Text color="dim">
-                    {"░".repeat(Math.max(0, 30 - Math.floor((totalMinutesAll / (targetHours * 60)) * 30)))}
-                  </Text>
-                </Text>
-              </Box>
-            )}
-          </Box>
-        </>
-      ) : (
-        status !== "SYNCING" && <Text color="dim">{getEmptyMessage()}</Text>
-      )}
-
-      <Box marginTop={1} flexDirection="column">
-        {status !== "SYNCING" && (
-          isSorting ? (
-            <Box borderStyle="single" borderColor="cyan" paddingX={1} marginBottom={1} flexDirection="column">
-              <Box backgroundColor="cyan" paddingX={1} marginRight={1} marginBottom={1} width={12}>
-                <Text bold color="black"> SORT BY </Text>
-              </Box>
-              {sortOptions.map((opt, i) => (
-                <Box key={opt.value}>
-                  <Text color={i === sortIndex ? "cyan" : "dim"}>
-                    {i === sortIndex ? "❯" : " "} {opt.label}
-                    {sortType === opt.value ? " (active)" : ""}
-                  </Text>
-                </Box>
-              ))}
-              <Box marginTop={1}>
-                <Text bold color="cyan">Enter</Text>
-                <Text color="dim"> to apply | </Text>
-                <Text bold color="cyan">Esc</Text>
-                <Text color="dim"> to close</Text>
-              </Box>
-            </Box>
-          ) : isFiltering ? (
-            <Box borderStyle="single" borderColor="yellow" paddingX={1} marginBottom={1} flexDirection="column">
-              <Box>
-                <Box backgroundColor="yellow" paddingX={1} marginRight={1}>
-                  <Text bold color="black"> FILTER </Text>
-                </Box>
-                <TextInput
-                  value={filterQuery}
-                  onChange={handleFilterChange}
-                  onSubmit={() => setIsFiltering(false)}
-                  placeholder="Start typing to filter..."
-                />
-              </Box>
-              <Box marginTop={1}>
-                <Text color="yellow"> {filteredLogs.length} matches | </Text>
-                <Text bold color="cyan">Enter</Text>
-                <Text color="dim"> to keep | </Text>
-                <Text bold color="cyan">Esc</Text>
-                <Text color="dim"> to reset</Text>
-              </Box>
-            </Box>
-          ) : (
-            <Box>
-              <Text color="dim">Keys: </Text>
-              <Text bold color="white">↑/↓</Text><Text color="dim"> navigate | </Text>
-              <Text bold color="white">o</Text><Text color="dim"> open | </Text>
-              <Text bold color="white">s</Text><Text color="dim"> sort | </Text>
-              <Text bold color="white">/</Text><Text color="dim"> filter | </Text>
-              <Text bold color="white">r</Text><Text color="dim"> refetch | </Text>
-              <Text bold color="white">q</Text><Text color="dim"> quit</Text>
-            </Box>
-          )
-        )}
-      </Box>
+      <LogControls
+        isSorting={isSorting}
+        sortOptions={sortOptions}
+        sortIndex={sortIndex}
+        sortType={sortType}
+        isFiltering={isFiltering}
+        filterQuery={filterQuery}
+        onFilterChange={handleFilterChange}
+        onFilterSubmit={() => setIsFiltering(false)}
+        filteredLogsCount={filteredLogs.length}
+        showControls={status !== "SYNCING"}
+      />
     </Box>
   );
 };

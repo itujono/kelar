@@ -4,8 +4,8 @@ import TextInput from "ink-text-input";
 import { QueryClientProvider, useQuery, useMutation, useQueryClient, QueryClient } from "@tanstack/react-query";
 import Spinner from "ink-spinner";
 import { format, startOfMonth, differenceInCalendarDays, setDate, addMonths } from "date-fns";
-import { TixTable } from "../components/TixTable";
-import { TixDetailPane } from "../components/TixDetailPane";
+import { TixTable } from "../components/tix/TixTable";
+import { TixDetailPane } from "../components/tix/TixDetailPane";
 import {
   searchIssues,
   fetchUsers,

@@ -1,8 +1,8 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { formatRelativeTime } from "../utils";
-import { type JiraIssue } from "../jira";
-import { Table } from "./Table";
+import { formatRelativeTime } from "../../utils";
+import { type JiraIssue } from "../../jira";
+import { Table } from "../Table";
 
 interface TixTableProps {
   tickets: JiraIssue[];
