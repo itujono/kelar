@@ -23,6 +23,10 @@ export interface JiraIssue {
         key: string;
       };
     };
+    project: {
+      name: string;
+      key: string;
+    };
     priority: {
       name: string;
     } | null;
@@ -244,7 +248,8 @@ export async function searchIssues(jql: string): Promise<JiraIssue[]> {
         "comment",
         "worklog",
         "issuelinks",
-        "description"
+        "description",
+        "project"
       ]
     }),
   });

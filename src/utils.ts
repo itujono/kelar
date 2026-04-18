@@ -120,11 +120,15 @@ export function isZombieTicket(t: JiraIssue): boolean {
   if (!t) return false;
   
   const status = t.fields.status.name.toLowerCase();
-  const isIndeterminate = t.fields.status.statusCategory.key === "indeterminate";
+  const category = t.fields.status.statusCategory.key;
+  
+  const isInProgress = category === "indeterminate";
+  const isDone = category === "done";
   const isWaiting = status.includes("review") || status.includes("qa") || status.includes("test");
+  const isTerminal = status.includes("done") || status.includes("closed") || status.includes("resolved") || status.includes("canceled");
 
-  // Only In Progress tickets that aren't waiting can be zombies
-  if (!isIndeterminate || isWaiting) return false;
+  // Only In Progress tickets that aren't waiting or terminal can be zombies
+  if (!isInProgress || isDone || isWaiting || isTerminal) return false;
 
   const comments = t.fields.comment?.comments || [];
   const worklogs = t.fields.worklog?.worklogs || [];

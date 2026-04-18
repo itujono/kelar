@@ -71,29 +71,28 @@ export const TixDetailPane: React.FC<TixDetailPaneProps> = ({ ticket, contextSco
         <Box marginBottom={1}>
           <Text bold color="white">DETAILS</Text>
         </Box>
-
+        <Box>
+          <Box width={12}><Text color="dim">Project:</Text></Box>
+          <Text>{ticket.fields.project.name}</Text>
+        </Box>
         <Box>
           <Box width={12}><Text color="dim">Status:</Text></Box>
           <Text>{ticket.fields.status.name}</Text>
         </Box>
-
         <Box>
           <Box width={12}><Text color="dim">Priority:</Text></Box>
           <Text color={
             ticket.fields.priority?.name === "Highest" || ticket.fields.priority?.name === "High" ? "red" : "white"
           }>{ticket.fields.priority?.name || "None"}</Text>
         </Box>
-
         <Box>
           <Box width={12}><Text color="dim">Assignee:</Text></Box>
           <Text color="yellow">{ticket.fields.assignee?.displayName || "Unassigned"}</Text>
         </Box>
-
         <Box marginTop={1}>
           <Box width={12}><Text color="dim">Updated:</Text></Box>
           <Text>{formatDistanceToNow(new Date(ticket.fields.updated), { addSuffix: true }).replace("about ", "~ ")}</Text>
         </Box>
-
         <Box>
           <Box width={12}><Text color="dim">Created:</Text></Box>
           <Text>{formatDistanceToNow(new Date(ticket.fields.created), { addSuffix: true }).replace("about ", "~ ")}</Text>

@@ -28,6 +28,8 @@ interface TixShortcutParams {
   setSelectedIndex: React.Dispatch<React.SetStateAction<number>>;
   setAccountId: (id: string | null) => void;
   setSelectedUserName: (name: string | null) => void;
+  setUserSearchQuery: (val: string) => void;
+  setCurrentPeerMode: (val: boolean) => void;
   isFiltering: boolean;
   setIsFiltering: (val: boolean) => void;
   setFilterQuery: (val: string) => void;
@@ -47,6 +49,8 @@ export function useTixShortcuts({
   setSelectedIndex,
   setAccountId,
   setSelectedUserName,
+  setUserSearchQuery,
+  setCurrentPeerMode,
   setIsFiltering,
   setFilterQuery,
   refetchTickets,
@@ -131,6 +135,7 @@ export function useTixShortcuts({
         if (user) {
           setAccountId(user.accountId);
           setSelectedUserName(user.displayName);
+          setUserSearchQuery("");
           setIsUserSelecting(false);
           setSelectedIndex(0);
         }
@@ -168,6 +173,23 @@ export function useTixShortcuts({
         const url = `https://${domain}/browse/${activeTicket.key}`;
         Bun.spawn(["open", url]);
       }
+    }
+
+    if (input === "p") {
+      const nextPeerMode = !isPeerMode;
+      setCurrentPeerMode(nextPeerMode);
+      if (nextPeerMode) {
+        setAccountId(null);
+        setSelectedUserName(null);
+        setUserSearchQuery("");
+        setIsUserSelecting(true);
+      } else {
+        setAccountId(config.JIRA_ACCOUNT_ID);
+        setSelectedUserName("Me");
+        setUserSearchQuery("");
+        setIsUserSelecting(false);
+      }
+      setSelectedIndex(0);
     }
 
     if (input === "r") {

@@ -15,15 +15,16 @@ import {
 import { getAppConfig, DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS } from "../config";
 import { parseJiraTime, getNowWithOffset } from "../utils";
 
-export function useTixView(isPeerMode: boolean) {
+export function useTixView(initialPeerMode: boolean) {
   const config = useMemo(() => getAppConfig(), []);
-  const [accountId, setAccountId] = useState<string | null>(isPeerMode ? null : config.JIRA_ACCOUNT_ID);
-  const [selectedUserName, setSelectedUserName] = useState<string | null>(isPeerMode ? null : "Me");
+  const [currentPeerMode, setCurrentPeerMode] = useState(initialPeerMode);
+  const [accountId, setAccountId] = useState<string | null>(initialPeerMode ? null : config.JIRA_ACCOUNT_ID);
+  const [selectedUserName, setSelectedUserName] = useState<string | null>(initialPeerMode ? null : "Me");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [filterQuery, setFilterQuery] = useState("");
   const [isFiltering, setIsFiltering] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
-  const [isUserSelecting, setIsUserSelecting] = useState(isPeerMode && !accountId);
+  const [isUserSelecting, setIsUserSelecting] = useState(initialPeerMode && !accountId);
 
   const [isSorting, setIsSorting] = useState(false);
   const [sortType, setSortType] = useState<"newest" | "oldest" | "priority" | "updated">("updated");
@@ -193,12 +194,14 @@ export function useTixView(isPeerMode: boolean) {
     setSortType,
     isUserSelecting,
     setIsUserSelecting,
-    isPeerMode,
+    isPeerMode: currentPeerMode,
+    setCurrentPeerMode,
     filteredUsers,
     selectedIndex,
     setSelectedIndex,
     setAccountId,
     setSelectedUserName,
+    setUserSearchQuery,
     isFiltering,
     setIsFiltering,
     setFilterQuery,
@@ -219,6 +222,8 @@ export function useTixView(isPeerMode: boolean) {
     handleUserSearchChange,
     isUserSelecting,
     setIsUserSelecting,
+    currentPeerMode,
+    setCurrentPeerMode,
     isSorting,
     setIsSorting,
     sortType,
