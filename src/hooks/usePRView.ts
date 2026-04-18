@@ -1,9 +1,8 @@
 import { useState, useMemo, useCallback } from "react";
 import { useInput, useApp } from "ink";
 import { useQuery, useQueries } from "@tanstack/react-query";
-import { fetchPRs, fetchPRActivity, fetchPRComments, fetchMe, calculateVelocity, type BitbucketUser } from "../bitbucket";
+import { fetchPRs, fetchPRActivity, fetchPRComments, calculateVelocity, type BitbucketUser, type BitbucketActivity } from "../bitbucket";
 import { queryClient } from "../queryClient";
-import { getBitbucketConfig } from "../config";
 
 export type PRSortType = "newest" | "oldest" | "longest" | "shortest";
 
@@ -59,11 +58,6 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
     }))
   });
 
-  const { data: me } = useQuery({
-    queryKey: ["me"],
-    queryFn: fetchMe,
-    staleTime: 1000 * 60 * 60, // Cache for an hour
-  });
 
   const prMetrics = useMemo(() => {
     return Object.fromEntries(
@@ -75,53 +69,30 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
           const comments = query.data;
           if (!comments) return [pr.id, { fb: 0, nr: null }];
 
-          const myAccountId = me?.account_id?.toLowerCase();
-          const myNickname = me?.nickname?.toLowerCase();
 
-          const isMe = (u: BitbucketUser) => {
-            if (myAccountId && u.account_id?.toLowerCase() === myAccountId) return true;
-            if (myNickname && u.nickname?.toLowerCase() === myNickname) return true;
-
-            // Fallback logic
-            const config = getBitbucketConfig();
-            const myUsername = config.BITBUCKET_USERNAME?.toLowerCase().trim();
-            const myHandle = myUsername?.includes("@") ? myUsername.split("@")[0] : myUsername;
-            const nick = u.nickname?.toLowerCase().trim();
-            const display = u.display_name?.toLowerCase().trim();
-            const account = u.account_id?.toLowerCase().trim();
-
-            return (
-              nick === myUsername ||
-              nick === myHandle ||
-              display === myUsername ||
-              display === myHandle ||
-              (myUsername && display?.includes(myUsername)) ||
-              (myHandle && display?.includes(myHandle)) ||
-              account === myUsername ||
-              account === myHandle
-            );
+          const isAuthor = (u: BitbucketUser) => {
+            return u.account_id === pr.author.account_id || (!!u.uuid && u.uuid === pr.author.uuid);
           };
 
-          // Feedbacks: Comments NOT by me
-          const peerComments = comments.filter(c => !isMe(c.user));
+          // Feedbacks: Comments NOT by the PR author
+          const peerComments = comments.filter(c => !isAuthor(c.user));
 
-          // Not Replied: Peer comments that are unresolved AND have no reply from me
+          // Not Replied: Peer comments that are unresolved AND have no reply from the PR author
           const nrCount = peerComments.filter(peerComment => {
             if (peerComment.is_resolved) return false;
 
-            // Check if I have replied to this specific comment
-            const hasMyReply = comments.some(c => {
-              return isMe(c.user) && c.parent?.id === peerComment.id;
+            const hasAuthorReply = comments.some(c => {
+              return isAuthor(c.user) && c.parent?.id === peerComment.id;
             });
 
-            return !hasMyReply;
+            return !hasAuthorReply;
           }).length;
 
           return [pr.id, { fb: peerComments.length, nr: nrCount }];
         })
         .filter((entry): entry is [number, { fb: number; nr: number | null }] => entry !== null)
     ) as Record<number, { fb: number; nr: number | null }>;
-  }, [commentsQueries, filteredPrs, me]);
+  }, [commentsQueries, filteredPrs]);
 
   const sortedPrs = useMemo(() => {
     return [...filteredPrs].sort((a, b) => {
@@ -132,8 +103,8 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
       if (sortBy === "oldest" || sortBy === "longest") return timeA - timeB;
 
       if (sortBy === "shortest") {
-        const actA = queryClient.getQueryData(["pr", a.id, "activity"]) as any[];
-        const actB = queryClient.getQueryData(["pr", b.id, "activity"]) as any[];
+        const actA = queryClient.getQueryData<BitbucketActivity[]>(["pr", a.id, "activity"]);
+        const actB = queryClient.getQueryData<BitbucketActivity[]>(["pr", b.id, "activity"]);
         const velA = actA ? calculateVelocity(a, actA).pickupLatency : Infinity;
         const velB = actB ? calculateVelocity(b, actB).pickupLatency : Infinity;
         return (velA ?? Infinity) - (velB ?? Infinity);

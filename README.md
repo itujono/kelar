@@ -109,6 +109,7 @@ kelar pr list --all
     - **`↑/↓`**: Navigate the list.
     - **`/`**: Enter **Filter Mode** to search by Title, Branch, or ID.
     - **`s`**: Open **Sort Menu** (Newest, Oldest, Lead Time, Pickup Latency).
+    - **`m`**: Toggle between your PRs (**MINE**) and **ALL** repository PRs.
     - **`o`**: Instantly **Open** the PR in your default browser.
     - **`c`**: **Copy** the source branch name to your clipboard.
     - **`r`**: **Refetch** latest data from Bitbucket.
@@ -160,7 +161,7 @@ kelar tix list --peer
 ### Pull Requests (`pr`)
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
-| `kelar pr list` | `[--all] [--sort <type>]` | View active PRs. `--sort` options: `newest`, `oldest`, `longest`, `shortest`. |
+| `kelar pr list` | `[--all] [--sort <type>]` | View active PRs. Press `m` to toggle modes interactively. |
 | `kelar pr config list` | - | View current Bitbucket configuration. |
 | `kelar pr config set` | `<key> <val>` | Update Bitbucket config (e.g. `BITBUCKET_REPO_SLUG`). |
 

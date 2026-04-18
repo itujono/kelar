@@ -73,7 +73,7 @@ function TixViewContent() {
           </>
         )}
         <Text color="dim"> | Daily Context: </Text>
-        <Text color="cyan" bold>{data.contextScore ?? "?"}</Text>
+        <Text color="cyan" bold>{data.contextScore ?? "-"}</Text>
       </Box>
 
       <Box flexDirection="row" minHeight={20}>
