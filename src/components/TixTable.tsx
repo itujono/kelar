@@ -36,17 +36,16 @@ const getPriorityColor = (priorityName: string): string => {
 
 export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) => {
   const COL_WIDTHS = {
-    key: 12,
-    priority: 8,
-    title: 70,
-    status: 15,
-    assignee: 15,
-    estimate: 10,
-    logged: 10,
-    created: 14,
-    updated: 14,
+    ID: 12,
+    Prio: 8,
+    Title: 70,
+    Status: 12,
+    Assignee: 12,
+    Est: 8,
+    Log: 8,
+    Created: 14,
+    Updated: 14,
   };
-
 
   if (tickets.length === 0) {
     return (
@@ -56,6 +55,7 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
     );
   }
 
+  // Calculate stats
   const total = tickets.length;
   const todo = tickets.filter(t => t.fields.status.statusCategory.key === "new").length;
   const inReview = tickets.filter(t => t.fields.status.name.toLowerCase().includes("review")).length;
@@ -77,6 +77,7 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
   };
   const zombies = tickets.filter(isZombie).length;
 
+  // Calculate windowed view
   const WINDOW_SIZE = 18;
   let start = 0;
   if (tickets.length > WINDOW_SIZE) {
@@ -88,51 +89,63 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
   const visibleTickets = tickets.slice(start, start + WINDOW_SIZE);
 
   return (
-    <>
+    <Box flexDirection="column" flexGrow={1} flexShrink={1}>
       <Table
         data={visibleTickets.map(t => ({
-          key: t.key,
-          priority: t.fields.priority?.name || "None",
-          title: t.fields.summary,
-          status: t.fields.status.name,
-          assignee: t.fields.assignee?.displayName?.split(" ")[0] || "Unassigned",
-          estimate: formatSeconds(t.fields.timeoriginalestimate),
-          logged: formatSeconds(t.fields.timespent),
-          created: formatRelativeTime(new Date(t.fields.created)),
-          updated: formatRelativeTime(new Date(t.fields.updated)),
+          ID: t.key,
+          Prio: t.fields.priority?.name || "None",
+          Title: t.fields.summary,
+          Status: t.fields.status.name,
+          Assignee: t.fields.assignee?.displayName?.split(" ")[0] || "Unassigned",
+          Est: formatSeconds(t.fields.timeoriginalestimate),
+          Log: formatSeconds(t.fields.timespent),
+          Created: formatRelativeTime(new Date(t.fields.created)),
+          Updated: formatRelativeTime(new Date(t.fields.updated)),
           _raw: t
         }))}
-        columns={["key", "priority", "title", "status", "assignee", "estimate", "logged", "created", "updated"]}
+        columns={["ID", "Prio", "Title", "Status", "Assignee", "Est", "Log", "Created", "Updated"]}
         columnWidths={COL_WIDTHS}
         compact
         selectedIndex={selectedIndex - start}
+        header={start > 0 ? (
+          <Text color="dim italic">  ↑ {start} more tickets...</Text>
+        ) : undefined}
         renderCell={(col, val, row) => {
           const t = row._raw as JiraIssue;
           const isSelected = (selectedIndex - start) === visibleTickets.indexOf(t);
 
-          if (col === "priority") {
+          if (col === "Prio") {
             return <Text color={isSelected ? "black" : getPriorityColor(val)}>{val}</Text>;
           }
-          if (col === "status") {
+          if (col === "Status") {
             return <Text color={isSelected ? "black" : getStatusColor(t.fields.status.statusCategory.key, val)}>{val}</Text>;
           }
-          if (col === "assignee") {
+          if (col === "Assignee") {
             return <Text color={isSelected ? "black" : "yellow"}>{val}</Text>;
           }
           if (isSelected) return val;
-          if (col === "key" || col === "estimate" || col === "logged" || col === "created" || col === "updated") {
+          if (col === "ID" || col === "Est" || col === "Log" || col === "Created" || col === "Updated") {
             return <Text color="dim">{val}</Text>;
           }
           return val;
         }}
+        footer={
+          <Box flexDirection="column" flexGrow={1}>
+            {start + WINDOW_SIZE < tickets.length && (
+              <Box borderStyle="single" borderBottom={true} borderTop={false} borderLeft={false} borderRight={false} borderColor="dim" paddingX={1}>
+                <Text color="dim italic">  ↓ {tickets.length - (start + WINDOW_SIZE)} more tickets...</Text>
+              </Box>
+            )}
+            <Box paddingX={1}>
+              <Text color="dim">Total: </Text><Text bold>{total}</Text>
+              <Text color="dim"> | To-Do: </Text><Text color="blue">{todo}</Text>
+              <Text color="dim"> | In Progress: </Text><Text color="yellow">{inProgress}</Text>
+              <Text color="dim"> | In Review: </Text><Text color="magenta">{inReview}</Text>
+              <Text color="dim"> | Zombies: </Text><Text color="red">{zombies}</Text>
+            </Box>
+          </Box>
+        }
       />
-      <Box paddingX={1} marginTop={1} borderStyle="single" borderTop={true} borderBottom={false} borderLeft={false} borderRight={false} borderColor="dim">
-        <Text color="dim">Total: </Text><Text bold>{total}</Text>
-        <Text color="dim"> | To-Do: </Text><Text color="blue">{todo}</Text>
-        <Text color="dim"> | In Progress: </Text><Text color="yellow">{inProgress}</Text>
-        <Text color="dim"> | In Review: </Text><Text color="magenta">{inReview}</Text>
-        <Text color="dim"> | Zombies: </Text><Text color="red">{zombies}</Text>
-      </Box>
-    </>
+    </Box>
   );
 };

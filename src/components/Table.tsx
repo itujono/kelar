@@ -8,6 +8,8 @@ interface TableProps<T> {
   compact?: boolean;
   selectedIndex?: number;
   renderCell?: (column: keyof T, value: any, row: T) => React.ReactNode;
+  header?: React.ReactNode;
+  footer?: React.ReactNode;
 }
 
 export function Table<T extends Record<string, any>>({
@@ -16,7 +18,9 @@ export function Table<T extends Record<string, any>>({
   columnWidths,
   compact,
   selectedIndex,
-  renderCell
+  renderCell,
+  header,
+  footer
 }: TableProps<T>) {
   if (data.length === 0) return null;
 
@@ -24,7 +28,7 @@ export function Table<T extends Record<string, any>>({
 
   const colWidths = allColumns.map((col) => {
     if (columnWidths && columnWidths[col]) {
-      return columnWidths[col] as number;
+      return (columnWidths[col] as number) + 2;
     }
     const headerLen = String(col).length;
     const maxDataLen = data.reduce((max, row) => {
@@ -38,14 +42,23 @@ export function Table<T extends Record<string, any>>({
   if (compact) {
     return (
       <Box flexDirection="column" borderStyle="round" borderColor="dim" flexGrow={1}>
+        {header && (
+          <Box borderStyle="single" borderBottom={true} borderTop={false} borderLeft={false} borderRight={false} borderColor="dim" paddingX={1}>
+            {header}
+          </Box>
+        )}
         <Box paddingX={1} marginBottom={0}>
-          {allColumns.map((col, i) => (
-            <Box key={String(col)} width={colWidths[i]} paddingRight={2}>
-              <Text bold color="cyan">
-                {String(col)}
-              </Text>
-            </Box>
-          ))}
+          {allColumns.map((col, i) => {
+            const width = colWidths[i] ?? 0;
+            const isWide = width > 20;
+            return (
+              <Box key={String(col)} width={width} paddingRight={2} flexShrink={isWide ? 1 : 0}>
+                <Text bold color="cyan">
+                  {String(col)}
+                </Text>
+              </Box>
+            );
+          })}
         </Box>
         {data.map((row, rowIndex) => {
           const isSelected = rowIndex === selectedIndex;
@@ -55,30 +68,39 @@ export function Table<T extends Record<string, any>>({
               paddingX={1}
               backgroundColor={isSelected ? "white" : undefined}
             >
-              {allColumns.map((col, i) => (
-                <Box key={String(col)} width={colWidths[i]} paddingRight={2}>
-                  {renderCell ? (
-                    (() => {
-                      const cell = renderCell(col, row[col], row);
-                      if (typeof cell === "string" || typeof cell === "number") {
-                        return (
-                          <Text color={isSelected ? "black" : undefined} wrap="truncate-end">
-                            {cell}
-                          </Text>
-                        );
-                      }
-                      return cell;
-                    })()
-                  ) : (
-                    <Text color={isSelected ? "black" : undefined} wrap="truncate-end">
-                      {row[col] ?? ""}
-                    </Text>
-                  )}
-                </Box>
-              ))}
+              {allColumns.map((col, i) => {
+                const width = colWidths[i] ?? 0;
+                const isWide = width > 20;
+                return (
+                  <Box key={String(col)} width={width} paddingRight={2} flexShrink={isWide ? 1 : 0}>
+                    {renderCell ? (
+                      (() => {
+                        const cell = renderCell(col, row[col], row);
+                        if (typeof cell === "string" || typeof cell === "number") {
+                          return (
+                            <Text color={isSelected ? "black" : undefined} wrap="truncate-end">
+                              {cell}
+                            </Text>
+                          );
+                        }
+                        return cell;
+                      })()
+                    ) : (
+                      <Text color={isSelected ? "black" : undefined} wrap="truncate-end">
+                        {row[col] ?? ""}
+                      </Text>
+                    )}
+                  </Box>
+                );
+              })}
             </Box>
           );
         })}
+        {footer && (
+          <Box borderStyle="single" borderTop={true} borderBottom={false} borderLeft={false} borderRight={false} borderColor="dim" marginTop={0}>
+            {footer}
+          </Box>
+        )}
       </Box>
     );
   }
@@ -105,7 +127,7 @@ export function Table<T extends Record<string, any>>({
         <Text color="dim">│</Text>
         {allColumns.map((col, i) => (
           <React.Fragment key={String(col)}>
-            <Box width={colWidths[i]} paddingX={1}>
+            <Box width={colWidths[i] ?? 0} paddingX={1}>
               <Text bold color="cyan">
                 {String(col)}
               </Text>
@@ -125,7 +147,7 @@ export function Table<T extends Record<string, any>>({
               <Text color={isSelected ? "black" : "dim"}>│</Text>
               {allColumns.map((col, i) => (
                 <React.Fragment key={String(col)}>
-                  <Box width={colWidths[i]} paddingX={1}>
+                  <Box width={colWidths[i] ?? 0} paddingX={1}>
                     <Box>
                       {renderCell ? (
                         <Box>

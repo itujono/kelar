@@ -117,8 +117,6 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "newe
     sync();
   }, [period]);
 
-
-
   const getSinceDate = (p: PeriodType) => {
     const now = new Date();
     switch (p) {
@@ -339,11 +337,6 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "newe
 
       {logs.length > 0 ? (
         <>
-          {startIndex > 0 && (
-            <Box paddingX={1}>
-              <Text color="dim">  ↑ {startIndex} more logs...</Text>
-            </Box>
-          )}
           <Table
             data={data}
             columns={["Date", "Identifier", "Label", "Type", "Time"]}
@@ -356,6 +349,14 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "newe
             }}
             compact
             selectedIndex={selectedIndex - startIndex}
+            header={startIndex > 0 ? (
+              <Text color="dim">  ↑ {startIndex} more logs...</Text>
+            ) : undefined}
+            footer={startIndex + WINDOW_SIZE < sortedLogs.length ? (
+              <Box paddingX={1}>
+                <Text color="dim">  ↓ {sortedLogs.length - (startIndex + WINDOW_SIZE)} more logs...</Text>
+              </Box>
+            ) : undefined}
             renderCell={(col, val, row) => {
               const isPersonal = row.Type === "Personal";
               const isSelected = data.indexOf(row) === (selectedIndex - startIndex);
@@ -377,11 +378,6 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "newe
               return val;
             }}
           />
-          {startIndex + WINDOW_SIZE < sortedLogs.length && (
-            <Box paddingX={1}>
-              <Text color="dim">  ↓ {sortedLogs.length - (startIndex + WINDOW_SIZE)} more logs...</Text>
-            </Box>
-          )}
           <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1} flexDirection="column">
             <Box>
               <Text bold>Grand Total: </Text>
