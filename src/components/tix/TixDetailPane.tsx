@@ -61,11 +61,7 @@ export const TixDetailPane: React.FC<TixDetailPaneProps> = ({ ticket }) => {
 
       <Box marginTop={1} paddingTop={1} borderStyle="single" borderTop={true} borderBottom={false} borderLeft={false} borderRight={false} borderColor="dim" flexDirection="column">
         <Box marginBottom={1}>
-          <Text bold color="white">DETAILS</Text>
-        </Box>
-        <Box>
-          <Box width={12}><Text color="dim">Project:</Text></Box>
-          <Text>{ticket.fields.project.name}</Text>
+          <Text bold color="white">{ticket.fields.project.name}</Text>
         </Box>
         <Box>
           <Box width={12}><Text color="dim">Status:</Text></Box>

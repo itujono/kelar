@@ -1,5 +1,4 @@
 import { Box, Text } from "ink";
-import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
 import { TixTable } from "../components/tix/TixTable";
 import { TixDetailPane } from "../components/tix/TixDetailPane";
@@ -7,6 +6,7 @@ import { formatMinutes } from "../utils";
 import { TixControls } from "../components/tix/TixControls";
 import { TixModal } from "../components/tix/TixModal";
 import { TixProvider, useTixContext } from "../contexts/TixContext";
+import { UserSelection } from "../components/tix/UserSelection";
 
 interface TixViewProps {
   isPeerMode?: boolean;
@@ -25,29 +25,13 @@ function TixViewContent() {
 
   if (data.isUserSelecting) {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Text bold color="cyan">Select Team Member</Text>
-        <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1}>
-          <Text color="dim">Search: </Text>
-          <TextInput value={data.userSearchQuery} onChange={handleUserSearchChange} placeholder="Type name..." />
-        </Box>
-        {data.isLoadingUsers && !data.filteredUsers.length ? (
-          <Box marginTop={1}><Spinner type="dots" /><Text italic> Initializing user list...</Text></Box>
-        ) : (
-          <Box flexDirection="column" marginTop={1}>
-            {data.filteredUsers.length === 0 ? (
-              <Text color="dim"> No matches found.</Text>
-            ) : (
-              data.filteredUsers.map((u, i) => (
-                <Box key={u.accountId} backgroundColor={i === data.selectedIndex ? "white" : undefined} paddingX={1}>
-                  <Text color={i === data.selectedIndex ? "black" : undefined}>{u.displayName}</Text>
-                  {u.emailAddress && <Text color="dim"> - {u.emailAddress}</Text>}
-                </Box>
-              ))
-            )}
-          </Box>
-        )}
-      </Box>
+      <UserSelection
+        userSearchQuery={data.userSearchQuery}
+        onUserSearchChange={handleUserSearchChange}
+        isLoadingUsers={data.isLoadingUsers}
+        filteredUsers={data.filteredUsers}
+        selectedIndex={data.selectedIndex}
+      />
     );
   }
 

@@ -218,11 +218,19 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     }
 
     if (isFiltering) {
+      if (key.return) setIsFiltering(false);
+
       if (key.escape) {
-        setIsFiltering(false);
+        if (filterQuery && filterQuery.length > 0) {
+          setFilterQuery("");
+        } else {
+          setIsFiltering(false);
+        }
+      }
+
+      if (key.ctrl && input === "u") {
         setFilterQuery("");
       }
-      if (key.return) setIsFiltering(false);
       return;
     }
 
@@ -261,7 +269,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       if (activeLog) {
         const domain = config.JIRA_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
         const ticketId = activeLog.is_jira ? activeLog.identifier : config.PERSONAL_TICKET_ID;
-        
+
         if (ticketId) {
           const url = `https://${domain}/browse/${ticketId}`;
           Bun.spawn(["open", url]);
@@ -269,10 +277,8 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       }
     }
 
-    if (key.ctrl && (input === "u" || input === "\u0015")) {
-      setFilterQuery("");
-    }
-  });
+  }
+  );
 
   return {
     status,
@@ -306,8 +312,8 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     daysRemaining,
     handleFilterChange,
     sync,
-     targetHours,
-     calculationDay,
-     activeLog
+    targetHours,
+    calculationDay,
+    activeLog
   };
 }

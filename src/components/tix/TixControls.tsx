@@ -27,7 +27,7 @@ export function TixControls() {
           borderColor="cyan"
         />
       ) : isFiltering ? (
-        <Box borderStyle="single" borderColor="yellow" paddingX={1} marginBottom={1} flexDirection="column">
+        <Box borderStyle="single" borderColor="yellow" paddingX={1} flexDirection="column">
           <Box>
             <Box backgroundColor="yellow" paddingX={1} marginRight={1}>
               <Text bold color="black"> FILTER </Text>
@@ -39,7 +39,7 @@ export function TixControls() {
             <Text bold color="cyan">Enter</Text>
             <Text color="dim"> to keep | </Text>
             <Text bold color="cyan">Esc</Text>
-            <Text color="dim"> to reset</Text>
+            <Text color="dim"> {filterQuery.length > 0 ? "to reset" : "to quit filter"}</Text>
           </Box>
         </Box>
       ) : (

@@ -91,7 +91,11 @@ export function useTixView(initialPeerMode: boolean) {
     return (tickets || []).filter(t => {
       if (!filterQuery) return true;
       const s = filterQuery.toLowerCase();
-      return t.key.toLowerCase().includes(s) || t.fields.summary.toLowerCase().includes(s);
+      return (
+        t.key.toLowerCase().includes(s) ||
+        t.fields.summary.toLowerCase().includes(s) ||
+        t.fields.status.name.toLowerCase().includes(s)
+      );
     });
   }, [tickets, filterQuery]);
 
@@ -205,7 +209,9 @@ export function useTixView(initialPeerMode: boolean) {
     isFiltering,
     setIsFiltering,
     setFilterQuery,
+    filterQuery,
     refetchTickets,
+    accountId,
     sortedTickets
   });
 

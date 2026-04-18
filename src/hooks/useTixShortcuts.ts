@@ -25,6 +25,7 @@ interface TixShortcutParams {
   isPeerMode: boolean;
   filteredUsers: JiraUser[];
   selectedIndex: number;
+  accountId: string | null;
   setSelectedIndex: React.Dispatch<React.SetStateAction<number>>;
   setAccountId: (id: string | null) => void;
   setSelectedUserName: (name: string | null) => void;
@@ -32,6 +33,7 @@ interface TixShortcutParams {
   setCurrentPeerMode: (val: boolean) => void;
   isFiltering: boolean;
   setIsFiltering: (val: boolean) => void;
+  filterQuery: string;
   setFilterQuery: (val: string) => void;
   refetchTickets: () => void;
   sortedTickets: JiraIssue[];
@@ -51,9 +53,11 @@ export function useTixShortcuts({
   setSelectedUserName,
   setUserSearchQuery,
   setCurrentPeerMode,
+  filterQuery,
   setIsFiltering,
   setFilterQuery,
   refetchTickets,
+  accountId,
   ...data
 }: TixShortcutParams) {
   const { exit } = useApp();
@@ -127,7 +131,14 @@ export function useTixShortcuts({
     }
 
     if (isUserSelecting) {
-      if (key.escape && !isPeerMode) setIsUserSelecting(false);
+      if (key.escape) {
+        setIsUserSelecting(false);
+        if (!accountId) {
+          setAccountId(config.JIRA_ACCOUNT_ID);
+          setSelectedUserName("Me");
+          setCurrentPeerMode(false);
+        }
+      }
       if (key.upArrow) setSelectedIndex(p => Math.max(0, p - 1));
       if (key.downArrow) setSelectedIndex(p => Math.min(filteredUsers.length - 1, p + 1));
       if (key.return) {
@@ -144,11 +155,19 @@ export function useTixShortcuts({
     }
 
     if (isFiltering) {
+      if (key.return) setIsFiltering(false);
+      
       if (key.escape) {
-        setIsFiltering(false);
+        if (filterQuery && filterQuery.length > 0) {
+          setFilterQuery("");
+        } else {
+          setIsFiltering(false);
+        }
+      }
+
+      if (key.ctrl && input === "u") {
         setFilterQuery("");
       }
-      if (key.return) setIsFiltering(false);
       return;
     }
 
