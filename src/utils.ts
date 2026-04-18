@@ -1,4 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
+import { type JiraIssue } from "./jira";
 
 /**
  * Shortens relative time strings (e.g., "6 hours" -> "6h", "2 days" -> "2d")
@@ -108,4 +109,38 @@ export function extractAdfText(doc: any): string {
     });
   }
   return text;
+}
+
+/**
+ * Determines if a ticket is a "zombie" (stagnant).
+ * A zombie is an In Progress ticket with no activity for > 48 hours,
+ * excluding waiting stages like Review, QA, or Test.
+ */
+export function isZombieTicket(t: JiraIssue): boolean {
+  if (!t) return false;
+  
+  const status = t.fields.status.name.toLowerCase();
+  const isIndeterminate = t.fields.status.statusCategory.key === "indeterminate";
+  const isWaiting = status.includes("review") || status.includes("qa") || status.includes("test");
+
+  // Only In Progress tickets that aren't waiting can be zombies
+  if (!isIndeterminate || isWaiting) return false;
+
+  const comments = t.fields.comment?.comments || [];
+  const worklogs = t.fields.worklog?.worklogs || [];
+
+  const lastComment = comments[comments.length - 1];
+  const lastCommentDate = lastComment ? new Date(lastComment.created).getTime() : 0;
+    
+  const lastWorklog = worklogs[worklogs.length - 1];
+  const lastWorklogDate = lastWorklog ? new Date(lastWorklog.started).getTime() : 0;
+
+  const lastActivity = Math.max(
+    lastCommentDate,
+    lastWorklogDate,
+    new Date(t.fields.updated).getTime()
+  );
+
+  const fortyEightHoursAgo = Date.now() - (48 * 60 * 60 * 1000);
+  return lastActivity < fortyEightHoursAgo;
 }

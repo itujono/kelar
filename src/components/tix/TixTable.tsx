@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { formatRelativeTime } from "../../utils";
+import { formatRelativeTime, isZombieTicket } from "../../utils";
 import { type JiraIssue } from "../../jira";
 import { Table } from "../Table";
 
@@ -64,18 +64,7 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
     !t.fields.status.name.toLowerCase().includes("review")
   ).length;
 
-  const isZombie = (t: JiraIssue) => {
-    const status = t.fields.status.name.toLowerCase();
-    const isIndeterminate = t.fields.status.statusCategory.key === "indeterminate";
-    const isWaiting = status.includes("review") || status.includes("qa") || status.includes("test");
-
-    if (!isIndeterminate || isWaiting) return false;
-
-    const updated = new Date(t.fields.updated).getTime();
-    const fortyEightHoursAgo = Date.now() - (48 * 60 * 60 * 1000);
-    return updated < fortyEightHoursAgo;
-  };
-  const zombies = tickets.filter(isZombie).length;
+  const zombies = tickets.filter(isZombieTicket).length;
 
   // Calculate windowed view
   const WINDOW_SIZE = 18;

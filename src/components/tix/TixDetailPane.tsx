@@ -1,5 +1,5 @@
-import React from "react";
 import { Box, Text } from "ink";
+import { isZombieTicket } from "../../utils";
 import { type JiraIssue } from "../../jira";
 import { formatDistanceToNow } from "date-fns";
 
@@ -10,18 +10,7 @@ interface TixDetailPaneProps {
 
 export const TixDetailPane: React.FC<TixDetailPaneProps> = ({ ticket, contextScore }) => {
   // Zombie detection
-  const comments = ticket.fields.comment?.comments || [];
-  const worklogs = ticket.fields.worklog?.worklogs || [];
-
-  const lastComment = comments[comments.length - 1];
-  const lastCommentDate = lastComment ? new Date(lastComment.created).getTime() : 0;
-
-  const lastWorklog = worklogs[worklogs.length - 1];
-  const lastWorklogDate = lastWorklog ? new Date(lastWorklog.started).getTime() : 0;
-
-  const lastActivity = Math.max(lastCommentDate, lastWorklogDate, new Date(ticket.fields.updated).getTime());
-  const fortyEightHoursAgo = Date.now() - (48 * 60 * 60 * 1000);
-  const isZombie = lastActivity < fortyEightHoursAgo;
+  const isZombie = isZombieTicket(ticket);
 
   // Blockers
   const blockers = ticket.fields.issuelinks.filter(link =>

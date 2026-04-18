@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback } from "react";
-import { useApp } from "ink";
 import { useTixShortcuts } from "./useTixShortcuts";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, startOfMonth, differenceInCalendarDays, setDate, addMonths } from "date-fns";
@@ -17,7 +16,6 @@ import { getAppConfig, DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS } f
 import { parseJiraTime, getNowWithOffset } from "../utils";
 
 export function useTixView(isPeerMode: boolean) {
-  const { exit } = useApp();
   const config = getAppConfig();
   const [accountId, setAccountId] = useState<string | null>(isPeerMode ? null : config.JIRA_ACCOUNT_ID);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(isPeerMode ? null : "Me");

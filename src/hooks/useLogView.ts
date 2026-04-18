@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useInput, useApp } from "ink";
 import { startOfDay, startOfWeek, startOfMonth, format, differenceInCalendarDays, addMonths, setDate } from "date-fns";
 import { dbOps, type LogDbRow } from "../db";
@@ -14,7 +14,7 @@ const CACHE_THRESHOLD_MINUTES = 5;
 export function useLogView(period: PeriodType, sortBy: SortType) {
   const { exit } = useApp();
   const config = getAppConfig();
-  
+
   const targetHours = parseInt(config.MONTHLY_TARGET_HOURS, 10) || DEFAULT_MONTHLY_TARGET_HOURS;
   const calculationDay = parseInt(config.LAST_CALCULATION_DAY, 10) || DEFAULT_CALCULATION_DAY;
 
@@ -215,7 +215,6 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       if (activeLog && activeLog.is_jira) {
         const domain = config.JIRA_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
         const url = `https://${domain}/browse/${activeLog.identifier}`;
-        // @ts-ignore
         Bun.spawn(["open", url]);
       }
     }
