@@ -45,6 +45,9 @@ kelar pr config set BITBUCKET_REPO_SLUG repo-slug
 kelar pr config set BITBUCKET_USERNAME your_username  # For identifying your work, approvals, and replies
 ```
 
+### Tickets (Jira)
+The `tix` module shares the same configuration as the **Work Logs** module. If you've already configured your Jira domain, email, and token above, you're all set!
+
 > [!TIP]
 > **Identity Discovery**: Kelar automatically fetches your canonical Bitbucket profile (nickname, account ID) to ensure your approvals and replies are correctly identified, even if your login username differs from your display name.
 
@@ -66,8 +69,8 @@ kelar log new IMM-123 45m
 # Available periods: day, week, month
 kelar log list month
 ```
-- **Goal Tracking**: Shows progress bars, deadline countdowns, and percentages.
-- **Interactive Filtering**: Press **`/`** to filter by ticket, summary, or type.
+- Shows progress bars, deadline countdowns, and percentages.
+- Press **`/`** to filter by ticket, summary, or type.
 
 #### Capturing Reports
 ```bash
@@ -133,7 +136,31 @@ kelar tix list --peer
     - **`v`**: **View** full ticket description (parsed from Atlassian ADF to readable text).
     - **`o`**: **Open** the ticket in your default browser.
     - **`c`**: **Copy** the Jira link to your clipboard.
-    - **`/` & `s`**: Real-time filtering and sorting options.
+    - **`/`**: Real-time filtering.
+    - **`s`**: Open **Sort Menu** (Newest, Oldest, Lead Time, Pickup Latency).
+
+## Command Reference
+
+### Work Logs (`log`)
+| Command | Arguments | Description |
+| :--- | :--- | :--- |
+| `kelar log new` | `<id> <time> [msg]` | Log new work. Prompts for comment if `msg` is missing. |
+| `kelar log list` | `[period]` | View logs for `day`, `week`, or `month` (default). |
+| `kelar log capture` | `[period]` | Generate a high-fidelity HTML report for a period. |
+| `kelar log config list`| - | View current Jira configuration. |
+| `kelar log config set` | `<key> <val>` | Update Jira config (e.g. `JIRA_TOKEN`, `MONTHLY_TARGET_HOURS`). |
+
+### Pull Requests (`pr`)
+| Command | Arguments | Description |
+| :--- | :--- | :--- |
+| `kelar pr list` | `[--all]` | View active PRs. Use `--all` to see the work of the whole team. |
+| `kelar pr config list` | - | View current Bitbucket configuration. |
+| `kelar pr config set` | `<key> <val>` | Update Bitbucket config (e.g. `BITBUCKET_REPO_SLUG`). |
+
+### Tickets (`tix`)
+| Command | Arguments | Description |
+| :--- | :--- | :--- |
+| `kelar tix list` | `[--peer]` | View your tickets. Use `--peer` to interactively select a teammate. |
 
 ## Data Storage & Security
 

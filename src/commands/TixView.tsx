@@ -61,6 +61,7 @@ const TixViewContent: React.FC<TixViewProps> = ({ isPeerMode = false }) => {
   const [logFocus, setLogFocus] = useState<"time" | "comment">("time");
   const [estimateValue, setEstimateValue] = useState("");
   const [transitionIndex, setTransitionIndex] = useState(0);
+  const [isConfirmingMove, setIsConfirmingMove] = useState(false);
 
   // Queries
   const { data: users, isLoading: isLoadingUsers } = useQuery({
@@ -193,13 +194,24 @@ const TixViewContent: React.FC<TixViewProps> = ({ isPeerMode = false }) => {
       }
 
       if (activeModal === "move" && transitions) {
+        if (isConfirmingMove) {
+          if (key.return) {
+            const t = transitions[transitionIndex];
+            if (t && activeTicket) {
+              transitionMutation.mutate({ key: activeTicket.key, id: t.id });
+            }
+            setIsConfirmingMove(false);
+          }
+          if (key.escape || key.backspace) {
+            setIsConfirmingMove(false);
+          }
+          return;
+        }
+
         if (key.upArrow) setTransitionIndex(p => Math.max(0, p - 1));
         if (key.downArrow) setTransitionIndex(p => Math.min(transitions.length - 1, p + 1));
         if (key.return) {
-          const t = transitions[transitionIndex];
-          if (t && activeTicket) {
-            transitionMutation.mutate({ key: activeTicket.key, id: t.id });
-          }
+          setIsConfirmingMove(true);
         }
       }
       return;
@@ -467,19 +479,38 @@ const TixViewContent: React.FC<TixViewProps> = ({ isPeerMode = false }) => {
           <Text bold color="yellow">Transition {activeTicket?.key}</Text>
           {isLoadingTransitions ? (
             <Box marginTop={1}><Spinner type="dots" /><Text> Fetching options...</Text></Box>
-          ) : (
+          ) : isConfirmingMove ? (
             <Box flexDirection="column" marginTop={1}>
-              {transitions?.map((t, i) => (
-                <Box key={t.id} backgroundColor={i === transitionIndex ? "white" : undefined} paddingX={1}>
-                  <Text color={i === transitionIndex ? "black" : undefined}>{t.name} (→ {t.to.name})</Text>
-                </Box>
-              ))}
+              <Text>You're about to move ticket </Text>
+              <Text bold color="cyan">{activeTicket?.key}</Text>
+              <Box>
+                <Text color="dim">{activeTicket?.fields.status.name}</Text>
+                <Text color="yellow"> → </Text>
+                <Text bold color="green">{transitions?.[transitionIndex]?.to.name}</Text>
+              </Box>
+              <Box marginTop={1}>
+                <Text italic color="yellow">Make sure you're aware of what this transition entails.</Text>
+              </Box>
+              <Box marginTop={1}>
+                <Text color="dim">Press </Text><Text bold color="green">Enter</Text><Text color="dim"> to confirm | </Text>
+                <Text bold color="red">Esc</Text><Text color="dim"> to cancel</Text>
+              </Box>
             </Box>
+          ) : (
+            <>
+              <Box flexDirection="column" marginTop={1}>
+                {transitions?.map((t, i) => (
+                  <Box key={t.id} backgroundColor={i === transitionIndex ? "white" : undefined} paddingX={1}>
+                    <Text color={i === transitionIndex ? "black" : undefined}>{t.name} (→ {t.to.name})</Text>
+                  </Box>
+                ))}
+              </Box>
+              <Box marginTop={1}>
+                <Text color="dim">Press </Text><Text bold color="cyan">Enter</Text><Text color="dim"> to select | </Text>
+                <Text bold color="cyan">Esc</Text><Text color="dim"> to cancel</Text>
+              </Box>
+            </>
           )}
-          <Box marginTop={1}>
-            <Text color="dim">Press </Text><Text bold color="cyan">Enter</Text><Text color="dim"> to select | </Text>
-            <Text bold color="cyan">Esc</Text><Text color="dim"> to cancel</Text>
-          </Box>
         </Box>
       )}
 
