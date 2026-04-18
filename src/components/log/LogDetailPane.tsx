@@ -66,16 +66,23 @@ export const LogDetailPane: React.FC<LogDetailPaneProps> = ({ log, allLogs }) =>
         <Box marginBottom={1}>
           <Text bold color="white">RECENT HISTORY</Text>
         </Box>
-        {identifierLogs.slice(0, 10).map((l) => (
-          <Box key={l.id}>
-            <Box width={8}>
-              <Text color="dim">{format(new Date(l.created_at), "dd MMM")}: </Text>
+        {identifierLogs.slice(0, 10).map((l) => {
+          const isCurrent = l.id === log.id;
+          return (
+            <Box key={l.id}>
+              <Box width={8}>
+                <Text color={isCurrent ? "cyan" : "dim"}>
+                  {format(new Date(l.created_at), "dd MMM")}:{" "}
+                </Text>
+              </Box>
+              <Box width={10}>
+                <Text color={isCurrent ? "green" : "yellow"} bold={isCurrent}>
+                  {formatMinutes(l.minutes)}
+                </Text>
+              </Box>
             </Box>
-            <Box width={10}>
-              <Text color="yellow">{formatMinutes(l.minutes)}</Text>
-            </Box>
-          </Box>
-        ))}
+          );
+        })}
         {identifierLogs.length > 10 && (
           <Box marginTop={0}>
             <Text color="dim" italic>  ... and {identifierLogs.length - 10} more entries</Text>
@@ -83,13 +90,11 @@ export const LogDetailPane: React.FC<LogDetailPaneProps> = ({ log, allLogs }) =>
         )}
       </Box>
 
-      {!!log.is_jira && (
-        <Box marginTop={1}>
-          <Text color="dim" italic>Press </Text>
-          <Text color="cyan" bold>'o'</Text>
-          <Text color="dim" italic> to open in browser</Text>
-        </Box>
-      )}
+      <Box marginTop={1}>
+        <Text color="dim" italic>Press </Text>
+        <Text color="cyan" bold>'o'</Text>
+        <Text color="dim" italic> to open in browser</Text>
+      </Box>
     </Box>
   );
 };

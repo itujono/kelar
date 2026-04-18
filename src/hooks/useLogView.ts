@@ -258,10 +258,14 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
 
     if (input === "o") {
       const activeLog = sortedLogs[selectedIndex];
-      if (activeLog && activeLog.is_jira) {
+      if (activeLog) {
         const domain = config.JIRA_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
-        const url = `https://${domain}/browse/${activeLog.identifier}`;
-        Bun.spawn(["open", url]);
+        const ticketId = activeLog.is_jira ? activeLog.identifier : config.PERSONAL_TICKET_ID;
+        
+        if (ticketId) {
+          const url = `https://${domain}/browse/${ticketId}`;
+          Bun.spawn(["open", url]);
+        }
       }
     }
 
