@@ -76,7 +76,6 @@ export const JIRA_KEY_REGEX = /^[A-Z]+-\d+$/i;
  */
 export function getNowWithOffset(): string {
   // Jira expects started string like "2021-01-17T12:34:00.000+0700"
-  // date-fns format or manual manipulation
   const now = new Date();
 
   // Shift date to UTC+7 for string representation if needed, 
@@ -91,6 +90,22 @@ export function getNowWithOffset(): string {
   const min = pad(now.getMinutes());
   const ss = pad(now.getSeconds());
 
-  // Hardcoded +0700 as requested
   return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}.000+0700`;
+}
+
+/**
+ * Recursively extracts plain text from Jira ADF (Atlassian Document Format).
+ */
+export function extractAdfText(doc: any): string {
+  if (!doc) return "";
+  if (typeof doc === "string") return doc;
+  let text = "";
+  if (doc.text) text += doc.text;
+  if (doc.content && Array.isArray(doc.content)) {
+    doc.content.forEach((c: any) => {
+      text += extractAdfText(c);
+      if (c.type === "paragraph" || c.type === "heading") text += "\n";
+    });
+  }
+  return text;
 }

@@ -18,7 +18,9 @@ import {
   clearTixCache
 } from "../jira";
 import { getAppConfig, DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS } from "../config";
-import { parseJiraTime, getNowWithOffset, formatMinutes } from "../utils";
+import { parseJiraTime, getNowWithOffset, formatMinutes, extractAdfText } from "../utils";
+import { TixControls } from "../components/tix/TixControls";
+import { TixModal } from "../components/tix/TixModal";
 
 interface TixViewProps {
   isPeerMode?: boolean;
@@ -322,19 +324,6 @@ export function TixView({ isPeerMode = false }: TixViewProps) {
     );
   }
 
-  const extractAdfText = (doc: any): string => {
-    if (!doc) return "";
-    if (typeof doc === "string") return doc;
-    let text = "";
-    if (doc.text) text += doc.text;
-    if (doc.content && Array.isArray(doc.content)) {
-      doc.content.forEach((c: any) => {
-        text += extractAdfText(c);
-        if (c.type === "paragraph" || c.type === "heading") text += "\n";
-      });
-    }
-    return text;
-  };
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -359,61 +348,17 @@ export function TixView({ isPeerMode = false }: TixViewProps) {
         )}
       </Box>
 
-      {/* Footer / Info */}
-      <Box marginTop={1} flexDirection="column">
-        {isSorting ? (
-          <Box borderStyle="single" borderColor="cyan" paddingX={1} marginBottom={1} flexDirection="column">
-            <Box backgroundColor="cyan" paddingX={1} marginRight={1} marginBottom={1} width={12}>
-              <Text bold color="black"> SORT BY </Text>
-            </Box>
-            {sortOptions.map((opt, i) => (
-              <Box key={opt.value}>
-                <Text color={i === sortIndex ? "cyan" : "dim"}>
-                  {i === sortIndex ? "❯" : " "} {opt.label}
-                  {sortType === opt.value ? " (active)" : ""}
-                </Text>
-              </Box>
-            ))}
-            <Box marginTop={1}>
-              <Text bold color="cyan">Enter</Text>
-              <Text color="dim"> to apply | </Text>
-              <Text bold color="cyan">Esc</Text>
-              <Text color="dim"> to close</Text>
-            </Box>
-          </Box>
-        ) : isFiltering ? (
-          <Box borderStyle="single" borderColor="yellow" paddingX={1} marginBottom={1} flexDirection="column">
-            <Box>
-              <Box backgroundColor="yellow" paddingX={1} marginRight={1}>
-                <Text bold color="black"> FILTER </Text>
-              </Box>
-              <TextInput value={filterQuery} onChange={setFilterQuery} />
-            </Box>
-            <Box marginTop={1}>
-              <Text color="yellow"> {sortedTickets.length} matches | </Text>
-              <Text bold color="cyan">Enter</Text>
-              <Text color="dim"> to keep | </Text>
-              <Text bold color="cyan">Esc</Text>
-              <Text color="dim"> to reset</Text>
-            </Box>
-          </Box>
-        ) : (
-          <Box>
-            <Text color="dim">Keys: </Text>
-            <Text bold color="white">↑/↓</Text><Text color="dim"> navigate | </Text>
-            <Text bold color="white">l</Text><Text color="dim"> log | </Text>
-            <Text bold color="white">m</Text><Text color="dim"> move | </Text>
-            <Text bold color="white">e</Text><Text color="dim"> estimate | </Text>
-            <Text bold color="white">v</Text><Text color="dim"> view | </Text>
-            <Text bold color="white">c</Text><Text color="dim"> copy | </Text>
-            <Text bold color="white">o</Text><Text color="dim"> open | </Text>
-            <Text bold color="white">s</Text><Text color="dim"> sort | </Text>
-            <Text bold color="white">/</Text><Text color="dim"> filter | </Text>
-            <Text bold color="white">r</Text><Text color="dim"> refetch | </Text>
-            <Text bold color="white">q</Text><Text color="dim"> quit</Text>
-          </Box>
-        )}
-      </Box>
+      <TixControls
+        isSorting={isSorting}
+        sortOptions={sortOptions}
+        sortIndex={sortIndex}
+        sortType={sortType}
+        isFiltering={isFiltering}
+        filterQuery={filterQuery}
+        onFilterChange={setFilterQuery}
+        onFilterSubmit={() => setIsFiltering(false)}
+        filteredTicketsCount={sortedTickets.length}
+      />
 
       {accountId && (
         <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1} flexDirection="column">
@@ -444,102 +389,25 @@ export function TixView({ isPeerMode = false }: TixViewProps) {
       )}
 
       {/* Modals */}
-      {activeModal === "log" && (
-        <Box borderStyle="double" borderColor="magenta" padding={1} flexDirection="column" position="absolute" marginTop={5} marginLeft={20} backgroundColor="black">
-          <Text bold color="magenta">Log Work for {activeTicket?.key}</Text>
-          <Box marginTop={1}>
-            <Text color={logFocus === "time" ? "white" : "dim"}>Time (e.g. 1h 30m): </Text>
-            <TextInput value={logTime} onChange={setLogTime} focus={logFocus === "time"} onSubmit={() => setLogFocus("comment")} />
-          </Box>
-          <Box>
-            <Text color={logFocus === "comment" ? "white" : "dim"}>Comment: </Text>
-            <TextInput value={logComment} onChange={setLogComment} focus={logFocus === "comment"} onSubmit={handleLogSubmit} />
-          </Box>
-          <Box marginTop={1} flexDirection="column">
-            <Text color="dim">Press </Text>
-            <Box>
-              <Text bold color="cyan">Tab</Text><Text color="dim"> to switch | </Text>
-              <Text bold color="cyan">Enter</Text><Text color="dim"> to save | </Text>
-              <Text bold color="cyan">Esc</Text><Text color="dim"> to cancel</Text>
-            </Box>
-          </Box>
-          {logMutation.isPending && <Text italic color="yellow">Posting...</Text>}
-        </Box>
-      )}
-
-      {activeModal === "move" && (
-        <Box borderStyle="double" borderColor="yellow" padding={1} flexDirection="column" position="absolute" marginTop={5} marginLeft={20} backgroundColor="black">
-          <Text bold color="yellow">Transition {activeTicket?.key}</Text>
-          {isLoadingTransitions ? (
-            <Box marginTop={1}><Spinner type="dots" /><Text> Fetching options...</Text></Box>
-          ) : isConfirmingMove ? (
-            <Box flexDirection="column" marginTop={1}>
-              <Text>You're about to move ticket </Text>
-              <Text bold color="cyan">{activeTicket?.key}</Text>
-              <Box>
-                <Text color="dim">{activeTicket?.fields.status.name}</Text>
-                <Text color="yellow"> → </Text>
-                <Text bold color="green">{transitions?.[transitionIndex]?.to.name}</Text>
-              </Box>
-              <Box marginTop={1}>
-                <Text italic color="yellow">Make sure you're aware of what this transition entails.</Text>
-              </Box>
-              <Box marginTop={1}>
-                <Text color="dim">Press </Text><Text bold color="green">Enter</Text><Text color="dim"> to confirm | </Text>
-                <Text bold color="red">Esc</Text><Text color="dim"> to cancel</Text>
-              </Box>
-            </Box>
-          ) : (
-            <>
-              <Box flexDirection="column" marginTop={1}>
-                {transitions?.map((t, i) => (
-                  <Box key={t.id} backgroundColor={i === transitionIndex ? "white" : undefined} paddingX={1}>
-                    <Text color={i === transitionIndex ? "black" : undefined}>{t.name} (→ {t.to.name})</Text>
-                  </Box>
-                ))}
-              </Box>
-              <Box marginTop={1}>
-                <Text color="dim">Press </Text><Text bold color="cyan">Enter</Text><Text color="dim"> to select | </Text>
-                <Text bold color="cyan">Esc</Text><Text color="dim"> to cancel</Text>
-              </Box>
-            </>
-          )}
-        </Box>
-      )}
-
-      {activeModal === "estimate" && (
-        <Box borderStyle="double" borderColor="cyan" padding={1} flexDirection="column" position="absolute" marginTop={5} marginLeft={20} backgroundColor="black">
-          <Text bold color="cyan">Update Estimate for {activeTicket?.key}</Text>
-          <Box marginTop={1}>
-            <Text>New Estimate (e.g. 4h): </Text>
-            <TextInput
-              value={estimateValue}
-              onChange={setEstimateValue}
-              onSubmit={handleEstimateSubmit}
-            />
-          </Box>
-          <Box marginTop={1}>
-            <Text color="dim">Enter to save | Esc to cancel</Text>
-          </Box>
-        </Box>
-      )}
-
-      {activeModal === "view" && (
-        <Box borderStyle="double" borderColor="white" padding={1} flexDirection="column" position="absolute" marginTop={2} marginLeft={5} width={100} height={25} backgroundColor="black">
-          <Box marginBottom={1} borderStyle="single" borderTop={false} borderLeft={false} borderRight={false} borderColor="dim" paddingBottom={1}>
-            <Text bold color="cyan">[{activeTicket?.key}] </Text>
-            <Text bold color="white">{activeTicket?.fields.summary}</Text>
-          </Box>
-          <Box flexGrow={1} flexDirection="column">
-            <Text color="white">
-              {extractAdfText(activeTicket?.fields.description) || <Text italic color="dim">No description provided.</Text>}
-            </Text>
-          </Box>
-          <Box marginTop={1} paddingTop={1} borderStyle="single" borderBottom={false} borderLeft={false} borderRight={false} borderColor="dim">
-            <Text bold color="cyan">Esc</Text><Text color="dim"> to close</Text>
-          </Box>
-        </Box>
-      )}
+      <TixModal
+        activeModal={activeModal}
+        activeTicket={activeTicket}
+        logTime={logTime}
+        setLogTime={setLogTime}
+        logComment={logComment}
+        setLogComment={setLogComment}
+        logFocus={logFocus}
+        setLogFocus={setLogFocus}
+        onLogSubmit={handleLogSubmit}
+        isLogPending={logMutation.isPending}
+        isLoadingTransitions={isLoadingTransitions}
+        isConfirmingMove={isConfirmingMove}
+        transitions={transitions}
+        transitionIndex={transitionIndex}
+        estimateValue={estimateValue}
+        setEstimateValue={setEstimateValue}
+        onEstimateSubmit={handleEstimateSubmit}
+      />
     </Box>
   );
 };
