@@ -14,7 +14,12 @@ interface PRViewProps {
 }
 
 export function PRView({ showAll = false, sortBy = "newest" }: PRViewProps) {
-  const { setIsFiltering, handleFilterChange, ...data } = usePRView(showAll, sortBy);
+  const { 
+    setIsFiltering, 
+    handleFilterChange, 
+    isAllMode, 
+    ...data 
+  } = usePRView(showAll, sortBy);
 
   if (!isBitbucketConfigValid().valid) {
     const missing = isBitbucketConfigValid().missing;
@@ -61,7 +66,7 @@ export function PRView({ showAll = false, sortBy = "newest" }: PRViewProps) {
   return (
     <Box flexDirection="column" padding={1}>
       <Box marginBottom={1}>
-        <Text bold color="cyan">Bitbucket PR Observability {showAll ? "(ALL)" : "(MINE)"}</Text>
+        <Text bold color="cyan">Bitbucket PR Observability {isAllMode ? "(ALL)" : "(MINE)"}</Text>
         <Text color="dim"> | sorted by: </Text>
         <Text color="yellow">{data.sortBy}</Text>
       </Box>
@@ -71,7 +76,7 @@ export function PRView({ showAll = false, sortBy = "newest" }: PRViewProps) {
           <PRTable
             prs={data.sortedPrs}
             selectedIndex={data.selectedIndex}
-            showMeColumn={showAll}
+            showMeColumn={isAllMode}
             metrics={data.prMetrics}
           />
         </Box>

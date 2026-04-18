@@ -86,7 +86,7 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
 
   return (
     <Box flexDirection="column" paddingX={2} width={50} minHeight={20} borderStyle="single" borderColor="cyan">
-      <Text bold color="white" underline>Details (PR #{pr.id})</Text>
+      <Text bold color="white" underline>PR #{pr.id}</Text>
 
       <Box flexDirection="column" marginTop={1}>
         <Text bold color="yellow">Velocity Metrics</Text>

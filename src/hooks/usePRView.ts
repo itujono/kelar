@@ -7,8 +7,9 @@ import { getBitbucketConfig } from "../config";
 
 export type PRSortType = "newest" | "oldest" | "longest" | "shortest";
 
-export function usePRView(showAll: boolean, initialSortBy: PRSortType = "newest") {
+export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "newest") {
   const { exit } = useApp();
+  const [isAllMode, setIsAllMode] = useState(initialShowAll);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [filterQuery, setFilterQuery] = useState("");
   const [isFiltering, setIsFiltering] = useState(false);
@@ -24,8 +25,8 @@ export function usePRView(showAll: boolean, initialSortBy: PRSortType = "newest"
   ];
 
   const { data: prs, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["prs", showAll],
-    queryFn: () => fetchPRs(showAll),
+    queryKey: ["prs", isAllMode],
+    queryFn: () => fetchPRs(isAllMode),
   });
 
   const filteredPrs = useMemo(() => {
@@ -218,22 +219,27 @@ export function usePRView(showAll: boolean, initialSortBy: PRSortType = "newest"
 
     if (input === "o" && activePR) {
       const url = activePR.links.html.href;
-      // @ts-ignore - Bun global
       Bun.spawn(["open", url]);
     }
 
     if (input === "c" && activePR) {
       const branch = activePR.source.branch.name;
-      // @ts-ignore - Bun global
       Bun.spawn(["pbcopy"], {
         stdin: Buffer.from(branch),
       });
+    }
+
+    if (input === "m" && !isFiltering) {
+      setIsAllMode(prev => !prev);
+      setSelectedIndex(0);
     }
   });
 
   return {
     selectedIndex,
     setSelectedIndex,
+    isAllMode,
+    setIsAllMode,
     filterQuery,
     isFiltering,
     setIsFiltering,
