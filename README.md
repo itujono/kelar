@@ -70,7 +70,11 @@ kelar log new IMM-123 45m
 kelar log list month
 ```
 - Shows progress bars, deadline countdowns, and percentages.
-- Press **`/`** to filter by ticket, summary, or type.
+- Interactive Controls:
+    - **`↑/↓`**: Navigate logs.
+    - **`/`**: Real-time filtering.
+    - **`p`**: Quickly switch period (**Today**, **This Week**, **This Month**).
+    - **`s`**: Open **Sort Menu** (Newest, Oldest, Longest, Shortest).
 
 #### Capturing Reports
 ```bash
@@ -123,21 +127,24 @@ kelar tix list --peer
 
 #### Observability Dashboard
 - Browse tickets with a compact layout featuring **ID, Prio, Title, Status, Assignee, Est, Log, Created, and Updated** columns.
+- Tracks your current selection, sort order, and **Daily Context Score** (count of unique tickets you've worked on today).
 - The ticket table footer tracks your overall monthly stats (Total, To-Do, In Progress, Review, and "Zombie" tickets) within the single unified view.
 - Detail Pane:
-    - Highlights tickets with no activity in >48 hours (zombie tickets).
+    - Lists **Project** and **Reporter** for the selected ticket.
+    - Highlights stagnant "In Progress" tickets with no activity in >48 hours (zombie tickets).
     - Recursive ASCII visualization of "Blocked By" links.
-    - Daily count of unique tickets you've interacted with.
 - Visual progress bar, percentage tracking against your hours goal, and a deadline countdown.
 - Interactive Controls:
     - **`l`**: **Log Work** with a multi-field modal (Time & Comment).
     - **`m`**: **Move** ticket status via interactive transition selection.
     - **`e`**: **Estimate** original time.
     - **`v`**: **View** full ticket description (parsed from Atlassian ADF to readable text).
+    - **`p`**: Toggle between your tickets (**Me**) and **Peer** selection.
     - **`o`**: **Open** the ticket in your default browser.
     - **`c`**: **Copy** the Jira link to your clipboard.
     - **`/`**: Real-time filtering.
     - **`s`**: Open **Sort Menu** (Newest, Oldest, Updated, High Priority).
+    - **`r`**: **Refetch** latest data and clear cache.
 
 ## Command Reference
 

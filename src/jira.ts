@@ -31,6 +31,7 @@ export interface JiraIssue {
       name: string;
     } | null;
     assignee: JiraUser | null;
+    reporter: JiraUser | null;
     timeoriginalestimate: number | null; // seconds
     timespent: number | null; // seconds
     created: string;
@@ -211,7 +212,7 @@ Response: ${errorText}`);
  * Searches for issues using JQL
  */
 export async function searchIssues(jql: string): Promise<JiraIssue[]> {
-  const CACHE_KEY = `TIX_CACHE_${Buffer.from(jql).toString("base64").substring(0, 50)}`;
+  const CACHE_KEY = `TIX_CACHE_V2_${Buffer.from(jql).toString("base64").substring(0, 50)}`;
   const CACHE_TS_KEY = `${CACHE_KEY}_TS`;
   const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
@@ -249,7 +250,8 @@ export async function searchIssues(jql: string): Promise<JiraIssue[]> {
         "worklog",
         "issuelinks",
         "description",
-        "project"
+        "project",
+        "reporter"
       ]
     }),
   });

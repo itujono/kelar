@@ -5,10 +5,9 @@ import { formatDistanceToNow } from "date-fns";
 
 interface TixDetailPaneProps {
   ticket: JiraIssue;
-  contextScore: number | null;
 }
 
-export const TixDetailPane: React.FC<TixDetailPaneProps> = ({ ticket, contextScore }) => {
+export const TixDetailPane: React.FC<TixDetailPaneProps> = ({ ticket }) => {
   // Zombie detection
   const isZombie = isZombieTicket(ticket);
 
@@ -59,13 +58,6 @@ export const TixDetailPane: React.FC<TixDetailPaneProps> = ({ ticket, contextSco
         )}
       </Box>
 
-      <Box marginTop={1} flexDirection="column">
-        <Text bold>Context Score:</Text>
-        <Box>
-          <Text color="cyan">{contextScore ?? "?"}</Text>
-          <Text color="dim"> tickets updated today</Text>
-        </Box>
-      </Box>
 
       <Box marginTop={1} paddingTop={1} borderStyle="single" borderTop={true} borderBottom={false} borderLeft={false} borderRight={false} borderColor="dim" flexDirection="column">
         <Box marginBottom={1}>
@@ -88,6 +80,11 @@ export const TixDetailPane: React.FC<TixDetailPaneProps> = ({ ticket, contextSco
         <Box>
           <Box width={12}><Text color="dim">Assignee:</Text></Box>
           <Text color="yellow">{ticket.fields.assignee?.displayName || "Unassigned"}</Text>
+        </Box>
+
+        <Box>
+          <Box width={12}><Text color="dim">Reporter:</Text></Box>
+          <Text color="yellow">{ticket.fields.reporter?.displayName || "System"}</Text>
         </Box>
         <Box marginTop={1}>
           <Box width={12}><Text color="dim">Updated:</Text></Box>

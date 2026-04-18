@@ -72,6 +72,8 @@ function TixViewContent() {
             <Text color="magenta" bold>{data.selectedUserName}</Text>
           </>
         )}
+        <Text color="dim"> | Daily Context: </Text>
+        <Text color="cyan" bold>{data.contextScore ?? "?"}</Text>
       </Box>
 
       <Box flexDirection="row" minHeight={20}>
@@ -79,7 +81,7 @@ function TixViewContent() {
           <TixTable tickets={data.sortedTickets} selectedIndex={data.selectedIndex} />
         </Box>
         {data.activeTicket && (
-          <TixDetailPane ticket={data.activeTicket} contextScore={data.contextScore || 0} />
+          <TixDetailPane ticket={data.activeTicket} />
         )}
       </Box>
 
