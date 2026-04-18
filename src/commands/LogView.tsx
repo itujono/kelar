@@ -12,17 +12,23 @@ export { type PeriodType, type SortType };
 interface LogViewProps {
   period?: PeriodType;
   sortBy?: SortType;
-  isCaptureMode?: boolean;
+  isGenerateMode?: boolean;
 }
 
-export function LogView({ period = "day", sortBy = "newest", isCaptureMode = false }: LogViewProps) {
+export function LogView({ period = "day", sortBy = "newest", isGenerateMode = false }: LogViewProps) {
   const { exit } = useApp();
-  const [capturedFile, setCapturedFile] = useState<string | null>(null);
+  const [generatedFile, setGeneratedFile] = useState<string | null>(null);
 
-  const { setIsFiltering, handleFilterChange, sync, ...data } = useLogView(period, sortBy);
+  const {
+    setIsFiltering,
+    handleFilterChange,
+    sync,
+    setIsGenerating,
+    ...data
+  } = useLogView(period, sortBy);
 
   useEffect(() => {
-    if (isCaptureMode && data.status === "SUCCESS") {
+    if ((isGenerateMode || data.isGenerating) && data.status === "SUCCESS") {
       const html = generateHtmlReport(
         data.sortedLogs,
         data.currentPeriod,
@@ -33,16 +39,19 @@ export function LogView({ period = "day", sortBy = "newest", isCaptureMode = fal
         data.personalCount
       );
 
-      const filename = `kelar-report-${data.currentPeriod}-${format(new Date(), "dd-MM-yyyy")}.html`;
-      // @ts-ignore - Bun global
+      const filename = `kelar-report-${data.currentPeriod}-${format(new Date(), "dd-MM-yyyy-HHmm")}.html`;
       Bun.write(filename, html).then(() => {
-        setCapturedFile(filename);
-        setTimeout(() => exit(), 1500);
+        setGeneratedFile(filename);
+        if (isGenerateMode) {
+          setTimeout(() => exit(), 1500);
+        } else {
+          setIsGenerating(false);
+        }
       });
-    } else if (isCaptureMode && data.status === "ERROR") {
+    } else if (isGenerateMode && data.status === "ERROR") {
       exit();
     }
-  }, [data.status, isCaptureMode, exit, data.sortedLogs, data.currentPeriod, data.targetHours, data.calculationDay, data.daysRemaining, data.totalMinutesAll, data.personalCount]);
+  }, [data.status, isGenerateMode, data.isGenerating, exit, data.sortedLogs, data.currentPeriod, data.targetHours, data.calculationDay, data.daysRemaining, data.totalMinutesAll, data.personalCount, setIsGenerating]);
 
   if (data.status === "ERROR") {
     return (
@@ -53,18 +62,18 @@ export function LogView({ period = "day", sortBy = "newest", isCaptureMode = fal
     );
   }
 
-  if (isCaptureMode) {
+  if (isGenerateMode) {
     return (
       <Box padding={1} flexDirection="column">
         {data.status === "SYNCING" ? (
           <Box>
             <Spinner type="dots" />
-            <Text italic> Generating work log snapshot...</Text>
+            <Text italic> Generating report...</Text>
           </Box>
-        ) : capturedFile ? (
+        ) : generatedFile ? (
           <Box flexDirection="column">
-            <Text color="green" bold>✅ Snapshot generated successfully!</Text>
-            <Text color="dim">Saved to: <Text color="cyan">{capturedFile}</Text></Text>
+            <Text color="green" bold>✅ Report generated successfully!</Text>
+            <Text color="dim">Saved to: <Text color="cyan">{generatedFile}</Text></Text>
           </Box>
         ) : (
           <Text italic color="dim">Preparing report data...</Text>
@@ -75,6 +84,12 @@ export function LogView({ period = "day", sortBy = "newest", isCaptureMode = fal
 
   return (
     <Box flexDirection="column" padding={1}>
+      {generatedFile && !isGenerateMode && (
+        <Box borderStyle="single" borderColor="green" paddingX={1} marginBottom={1}>
+          <Text color="green">✅ Report generated: </Text>
+          <Text color="cyan">{generatedFile}</Text>
+        </Box>
+      )}
       <Box marginBottom={1} flexDirection="row">
         {data.status === "SYNCING" ? (
           <Box>

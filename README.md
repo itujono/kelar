@@ -7,7 +7,7 @@
 - **Jira Work Logs**: Smart time parsing (`1h 30m`), automatic rounding, and monthly goal tracking.
 - **Bitbucket PR Observability**: Track pull requests, approvals, feedback cycles, and velocity metrics directly in the terminal.
 - **Intelligent Sync & Mirror**: Maintains a local SQLite database (`~/.kelar/kelar.db`) with smart caching.
-- **Capture Mode**: Generate high-fidelity HTML dashboards for your work progress.
+- **Generation Mode**: Generate high-fidelity HTML reports for your work progress.
 - **Privacy First**: All credentials and data stay on your machine in a local SQLite database.
 
 ## Installation
@@ -74,13 +74,14 @@ kelar log list month
     - **`↑/↓`**: Navigate logs.
     - **`/`**: Real-time filtering.
     - **`p`**: Quickly switch period (**Today**, **This Week**, **This Month**).
+    - **`g`**: **Generate** high-fidelity HTML report instantly.
     - **`s`**: Open **Sort Menu** (Newest, Oldest, Longest, Shortest).
 
-#### Capturing Reports
+#### Generating Reports
 ```bash
-kelar log capture month
+kelar log generate month
 ```
-Generates a styled `kelar-report-month-YYYY-MM-DD.html` file for sharing with management.
+Generates a styled `kelar-report-month-dd-MM-yyyy-HHmm.html` file for sharing with management.
 
 ### Pull Requests
 
@@ -153,8 +154,8 @@ kelar tix list --peer
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
 | `kelar log new` | `<id> <time> [msg]` | Log new work. Prompts for comment if `msg` is missing. |
-| `kelar log list` | `[period]` | View logs for `day`, `week`, or `month` (default). |
-| `kelar log capture` | `[period]` | Generate a high-fidelity HTML report for a period. |
+| `kelar log list` | `[period]` | View logs for `day`, `week`, or `month` (default). Press `g` to generate report. |
+| `kelar log generate` | `[period]` | Generate a high-fidelity HTML report for a period. |
 | `kelar log config list`| - | View current Jira configuration. |
 | `kelar log config set` | `<key> <val>` | Update Jira config (e.g. `JIRA_TOKEN`, `MONTHLY_TARGET_HOURS`). |
 

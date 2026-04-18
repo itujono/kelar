@@ -60,16 +60,16 @@ log
     await waitUntilExit();
   });
 
-// log capture [period]
+// log generate [period]
 log
-  .command("capture")
-  .description("Capture a snapshot of the work log table for sharing")
+  .command("generate")
+  .description("Generate an HTML report of the work log table")
   .argument("[period]", "Period to view (day, week, month)", "day")
   .option("-s, --sort <type>", "Sort by (longest, shortest, newest, oldest)", "newest")
   .action(async (period, options) => {
     const { waitUntilExit } = render(
       <GlobalProviders>
-        <LogView period={period} sortBy={options.sort as SortType} isCaptureMode />
+        <LogView period={period} sortBy={options.sort as SortType} isGenerateMode />
       </GlobalProviders>
     );
     await waitUntilExit();

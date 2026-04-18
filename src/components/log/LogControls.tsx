@@ -85,6 +85,7 @@ export const LogControls: React.FC<LogControlsProps> = ({
           <Text bold color="white">o</Text><Text color="dim"> open | </Text>
           <Text bold color="white">s</Text><Text color="dim"> sort | </Text>
           <Text bold color="white">p</Text><Text color="dim"> period | </Text>
+          <Text bold color="white">g</Text><Text color="dim"> generate | </Text>
           <Text bold color="white">/</Text><Text color="dim"> filter | </Text>
           <Text bold color="white">r</Text><Text color="dim"> refetch | </Text>
           <Text bold color="white">q</Text><Text color="dim"> quit</Text>

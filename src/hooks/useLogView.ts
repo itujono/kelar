@@ -30,6 +30,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
   const [currentPeriod, setCurrentPeriod] = useState<PeriodType>(period);
   const [isSelectingPeriod, setIsSelectingPeriod] = useState(false);
   const [periodIndex, setPeriodIndex] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const sortOptions = useMemo(() => [
     { label: "Newest", value: "newest" as const },
@@ -235,6 +236,10 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       setSortIndex(0);
       return;
     }
+    if (input === "g" && !isFiltering) {
+      setIsGenerating(true);
+      return;
+    }
     if (input === "p") {
       setIsSelectingPeriod(true);
       const currentIndex = periodOptions.findIndex(o => o.value === currentPeriod);
@@ -286,6 +291,8 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     setIsSelectingPeriod,
     periodIndex,
     setPeriodIndex,
+    isGenerating,
+    setIsGenerating,
     sortedLogs,
     filteredLogs,
     totalMinutesAll,
