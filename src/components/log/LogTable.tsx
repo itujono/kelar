@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { Table } from "../Table";
 import { formatMinutes } from "../../utils";
 import { type LogDbRow } from "../../db";
-import type { PeriodType } from "../../commands/LogView";
+import type { PeriodType } from "../../hooks/useLogView";
 
 interface LogTableProps {
   logs: LogDbRow[];

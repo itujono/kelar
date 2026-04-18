@@ -15,7 +15,7 @@ interface Props {
   initialComment?: string;
 }
 
-export const LogNew: React.FC<Props> = ({ identifier, time, initialComment }) => {
+export function LogNew({ identifier, time, initialComment }: Props) {
   const { exit } = useApp();
   const [status, setStatus] = useState<Status>("IDLE");
   const [comment, setComment] = useState(initialComment || "");

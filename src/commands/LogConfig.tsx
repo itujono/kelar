@@ -1,8 +1,7 @@
-import React from "react";
 import { Text, Box } from "ink";
 import { getAppConfig } from "../config";
 
-export const LogConfig: React.FC = () => {
+export function LogConfig() {
   const config = getAppConfig();
 
   return (

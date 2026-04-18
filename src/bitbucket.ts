@@ -1,14 +1,5 @@
 import { getBitbucketConfig } from "./config";
-import { QueryClient } from "@tanstack/react-query";
-
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
-    },
-  },
-});
+import { queryClient } from "./queryClient";
 
 export interface BitbucketUser {
   display_name: string;
@@ -97,7 +88,6 @@ export interface BitbucketComment {
   };
 }
 
-
 const getAuthHeader = () => {
   const { BITBUCKET_EMAIL, BITBUCKET_TOKEN } = getBitbucketConfig();
   if (!BITBUCKET_EMAIL || !BITBUCKET_TOKEN) {
@@ -121,13 +111,13 @@ export const fetchPRs = async (all = false): Promise<BitbucketPR[]> => {
   const { BITBUCKET_USERNAME } = getBitbucketConfig();
   const baseUrl = getBaseUrl();
   const url = new URL(`${baseUrl}/pullrequests`);
-  
+
   // Use 'q' parameter for all filtering to ensure state and author checks are combined correctly
   let query = 'state="OPEN"';
   if (!all && BITBUCKET_USERNAME) {
     query = `(${query}) AND (author.nickname="${BITBUCKET_USERNAME}" OR author.username="${BITBUCKET_USERNAME}")`;
   }
-  
+
   url.searchParams.append("q", query);
   url.searchParams.append("fields", "values.*,values.participants");
 
@@ -141,7 +131,7 @@ export const fetchPRs = async (all = false): Promise<BitbucketPR[]> => {
 
   const data = await response.json() as { values?: BitbucketPR[] };
   const values = data.values || [];
-  
+
   // Client-side safety filter
   return values.filter(pr => pr.state === "OPEN");
 };
@@ -211,8 +201,6 @@ export const fetchPRComments = async (prId: number): Promise<BitbucketComment[]>
   const data = await response.json() as { values?: BitbucketComment[] };
   return data.values || [];
 };
-
-
 
 export const calculateVelocity = (pr: BitbucketPR, activities: BitbucketActivity[]) => {
   const created = new Date(pr.created_on).getTime();

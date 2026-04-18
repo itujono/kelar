@@ -1,35 +1,32 @@
-import React from "react";
 import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
-import type { SortType } from "../../hooks/useLogView";
+import { type BitbucketPR } from "../../bitbucket";
 
-interface LogControlsProps {
+interface PRControlsProps {
   isSorting: boolean;
-  sortOptions: Array<{ label: string; value: SortType }>;
+  sortOptions: Array<{ label: string; value: string }>;
   sortIndex: number;
-  sortType: SortType;
+  sortBy: string;
   isFiltering: boolean;
   filterQuery: string;
   onFilterChange: (val: string) => void;
   onFilterSubmit: () => void;
-  filteredLogsCount: number;
-  showControls: boolean;
+  filteredPrsCount: number;
+  activePR?: BitbucketPR;
 }
 
-export const LogControls: React.FC<LogControlsProps> = ({
+export const PRControls: React.FC<PRControlsProps> = ({
   isSorting,
   sortOptions,
   sortIndex,
-  sortType,
+  sortBy,
   isFiltering,
   filterQuery,
   onFilterChange,
   onFilterSubmit,
-  filteredLogsCount,
-  showControls
+  filteredPrsCount,
+  activePR
 }) => {
-  if (!showControls) return null;
-
   return (
     <Box marginTop={1} flexDirection="column">
       {isSorting ? (
@@ -41,7 +38,7 @@ export const LogControls: React.FC<LogControlsProps> = ({
             <Box key={opt.value}>
               <Text color={i === sortIndex ? "cyan" : "dim"}>
                 {i === sortIndex ? "❯" : " "} {opt.label}
-                {sortType === opt.value ? " (active)" : ""}
+                {sortBy === opt.value ? " (active)" : ""}
               </Text>
             </Box>
           ))}
@@ -62,11 +59,11 @@ export const LogControls: React.FC<LogControlsProps> = ({
               value={filterQuery}
               onChange={onFilterChange}
               onSubmit={onFilterSubmit}
-              placeholder="Start typing to filter..."
+              placeholder="Search title, branch, or ID..."
             />
           </Box>
           <Box marginTop={1}>
-            <Text color="yellow"> {filteredLogsCount} matches | </Text>
+            <Text color="yellow"> {filteredPrsCount} matches | </Text>
             <Text bold color="cyan">Enter</Text>
             <Text color="dim"> to keep | </Text>
             <Text bold color="cyan">Esc</Text>
@@ -74,15 +71,24 @@ export const LogControls: React.FC<LogControlsProps> = ({
           </Box>
         </Box>
       ) : (
-        <Box>
-          <Text color="dim">Keys: </Text>
-          <Text bold color="white">↑/↓</Text><Text color="dim"> navigate | </Text>
-          <Text bold color="white">o</Text><Text color="dim"> open | </Text>
-          <Text bold color="white">s</Text><Text color="dim"> sort | </Text>
-          <Text bold color="white">/</Text><Text color="dim"> filter | </Text>
-          <Text bold color="white">r</Text><Text color="dim"> refetch | </Text>
-          <Text bold color="white">q</Text><Text color="dim"> quit</Text>
-        </Box>
+        <>
+          <Box>
+            <Text color="dim">Keys: </Text>
+            <Text bold color="white">↑/↓</Text><Text color="dim"> navigate | </Text>
+            <Text bold color="white">/</Text><Text color="dim"> filter | </Text>
+            <Text bold color="white">s</Text><Text color="dim"> sort | </Text>
+            <Text bold color="white">o</Text><Text color="dim"> open | </Text>
+            <Text bold color="white">c</Text><Text color="dim"> copy branch | </Text>
+            <Text bold color="white">r</Text><Text color="dim"> refetch | </Text>
+            <Text bold color="white">q</Text><Text color="dim"> quit</Text>
+          </Box>
+          {activePR && (
+            <Box marginTop={1}>
+              <Text color="dim">Selected: </Text>
+              <Text color="yellow">#{activePR.id} - {activePR.title}</Text>
+            </Box>
+          )}
+        </>
       )}
     </Box>
   );

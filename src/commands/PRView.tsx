@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Box, Text, useInput, useApp } from "ink";
-import TextInput from "ink-text-input";
-import { QueryClientProvider, useQuery, useQueries } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import Spinner from "ink-spinner";
 import { PRTable } from "../components/pr/PRTable";
 import { PRDetailPane } from "../components/pr/PRDetailPane";
-import { fetchPRs, fetchPRActivity, fetchPRComments, fetchMe, calculateVelocity, queryClient, type BitbucketUser } from "../bitbucket";
+import { PRControls } from "../components/pr/PRControls";
+import { fetchPRs, fetchPRActivity, fetchPRComments, fetchMe, calculateVelocity, type BitbucketUser } from "../bitbucket";
+import { queryClient } from "../queryClient";
 import { isBitbucketConfigValid, getBitbucketConfig } from "../config";
 
 interface PRViewProps {
@@ -14,7 +15,7 @@ interface PRViewProps {
 
 type PRSortType = "newest" | "oldest" | "longest" | "shortest";
 
-const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
+export function PRView({ showAll = false }: PRViewProps) {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [filterQuery, setFilterQuery] = useState("");
@@ -300,79 +301,20 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
       </Box>
 
 
-      <Box marginTop={1} flexDirection="column">
-        {isSorting ? (
-          <Box borderStyle="single" borderColor="cyan" paddingX={1} marginBottom={1} flexDirection="column">
-            <Box backgroundColor="cyan" paddingX={1} marginRight={1} marginBottom={1} width={12}>
-              <Text bold color="black"> SORT BY </Text>
-            </Box>
-            {sortOptions.map((opt, i) => (
-              <Box key={opt.value}>
-                <Text color={i === sortIndex ? "cyan" : "dim"}>
-                  {i === sortIndex ? "❯" : " "} {opt.label}
-                  {sortBy === opt.value ? " (active)" : ""}
-                </Text>
-              </Box>
-            ))}
-            <Box marginTop={1}>
-              <Text bold color="cyan">Enter</Text>
-              <Text color="dim"> to apply | </Text>
-              <Text bold color="cyan">Esc</Text>
-              <Text color="dim"> to close</Text>
-            </Box>
-          </Box>
-        ) : isFiltering ? (
-          <Box borderStyle="single" borderColor="yellow" paddingX={1} marginBottom={1} flexDirection="column">
-            <Box>
-              <Box backgroundColor="yellow" paddingX={1} marginRight={1}>
-                <Text bold color="black"> FILTER </Text>
-              </Box>
-              <TextInput
-                value={filterQuery}
-                onChange={handleFilterChange}
-                onSubmit={() => setIsFiltering(false)}
-                placeholder="Search title, branch, or ID..."
-              />
-            </Box>
-            <Box marginTop={1}>
-              <Text color="yellow"> {sortedPrs.length} matches | </Text>
-              <Text bold color="cyan">Enter</Text>
-              <Text color="dim"> to keep | </Text>
-              <Text bold color="cyan">Esc</Text>
-              <Text color="dim"> to reset</Text>
-            </Box>
-          </Box>
-        ) : (
-          <>
-            <Box>
-              <Text color="dim">Keys: </Text>
-              <Text bold color="white">↑/↓</Text><Text color="dim"> navigate | </Text>
-              <Text bold color="white">/</Text><Text color="dim"> filter | </Text>
-              <Text bold color="white">s</Text><Text color="dim"> sort | </Text>
-              <Text bold color="white">o</Text><Text color="dim"> open | </Text>
-              <Text bold color="white">c</Text><Text color="dim"> copy branch | </Text>
-              <Text bold color="white">r</Text><Text color="dim"> refetch | </Text>
-              <Text bold color="white">q</Text><Text color="dim"> quit</Text>
-            </Box>
-            {activePR && (
-              <Box marginTop={1}>
-                <Text color="dim">Selected: </Text>
-                <Text color="yellow">#{activePR.id} - {activePR.title}</Text>
-              </Box>
-            )}
-          </>
-        )}
-      </Box>
+      <PRControls
+        isSorting={isSorting}
+        sortOptions={sortOptions}
+        sortIndex={sortIndex}
+        sortBy={sortBy}
+        isFiltering={isFiltering}
+        filterQuery={filterQuery}
+        onFilterChange={handleFilterChange}
+        onFilterSubmit={() => setIsFiltering(false)}
+        filteredPrsCount={sortedPrs.length}
+        activePR={activePR}
+      />
     </Box>
   );
-
 };
 
 
-export const PRView: React.FC<PRViewProps> = (props) => {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <PRViewContent {...props} />
-    </QueryClientProvider>
-  );
-};

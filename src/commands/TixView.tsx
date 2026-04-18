@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import TextInput from "ink-text-input";
-import { QueryClientProvider, useQuery, useMutation, useQueryClient, QueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Spinner from "ink-spinner";
 import { format, startOfMonth, differenceInCalendarDays, setDate, addMonths } from "date-fns";
 import { TixTable } from "../components/tix/TixTable";
@@ -24,15 +24,8 @@ interface TixViewProps {
   isPeerMode?: boolean;
 }
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-    },
-  },
-});
 
-const TixViewContent: React.FC<TixViewProps> = ({ isPeerMode = false }) => {
+export function TixView({ isPeerMode = false }: TixViewProps) {
   const { exit } = useApp();
   const config = getAppConfig();
   const [accountId, setAccountId] = useState<string | null>(isPeerMode ? null : config.JIRA_ACCOUNT_ID);
@@ -551,10 +544,3 @@ const TixViewContent: React.FC<TixViewProps> = ({ isPeerMode = false }) => {
   );
 };
 
-export const TixView: React.FC<TixViewProps> = (props) => {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TixViewContent {...props} />
-    </QueryClientProvider>
-  );
-};

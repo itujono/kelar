@@ -2,12 +2,21 @@
 import { render } from "ink";
 import { Command } from "commander";
 import { LogNew } from "./commands/LogNew";
-import { LogView, type SortType } from "./commands/LogView";
+import { LogView } from "./commands/LogView";
+import { type SortType } from "./hooks/useLogView";
 import { LogConfig } from "./commands/LogConfig";
 import { setAppConfig, type ConfigKey, CONFIG_KEYS, BITBUCKET_CONFIG_KEYS, type BitbucketConfigKey, getBitbucketConfig } from "./config";
 import { Text, Box } from "ink";
 import { PRView } from "./commands/PRView";
 import { TixView } from "./commands/TixView";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./queryClient";
+
+const GlobalProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <QueryClientProvider client={queryClient}>
+    {children}
+  </QueryClientProvider>
+);
 
 
 const program = new Command();
@@ -26,7 +35,11 @@ log
   .argument("<time>", "Time spent (e.g. 45m, 1h, 1h 30m)")
   .argument("[comment]", "Optional comment for the worklog")
   .action(async (identifier, time, comment) => {
-    const { waitUntilExit } = render(<LogNew identifier={identifier} time={time} initialComment={comment} />);
+    const { waitUntilExit } = render(
+      <GlobalProviders>
+        <LogNew identifier={identifier} time={time} initialComment={comment} />
+      </GlobalProviders>
+    );
     await waitUntilExit();
   });
 
@@ -38,7 +51,11 @@ log
   .argument("[period]", "Period to view (day, week, month)", "month")
   .option("-s, --sort <type>", "Sort by (longest, shortest, newest, oldest)", "newest")
   .action(async (period, options) => {
-    const { waitUntilExit } = render(<LogView period={period} sortBy={options.sort as SortType} />);
+    const { waitUntilExit } = render(
+      <GlobalProviders>
+        <LogView period={period} sortBy={options.sort as SortType} />
+      </GlobalProviders>
+    );
     await waitUntilExit();
   });
 
@@ -49,7 +66,11 @@ log
   .argument("[period]", "Period to view (day, week, month)", "day")
   .option("-s, --sort <type>", "Sort by (longest, shortest, newest, oldest)", "newest")
   .action(async (period, options) => {
-    const { waitUntilExit } = render(<LogView period={period} sortBy={options.sort as SortType} isCaptureMode />);
+    const { waitUntilExit } = render(
+      <GlobalProviders>
+        <LogView period={period} sortBy={options.sort as SortType} isCaptureMode />
+      </GlobalProviders>
+    );
     await waitUntilExit();
   });
 
@@ -61,7 +82,11 @@ config
   .alias("view")
   .description("View current configuration")
   .action(async () => {
-    const { waitUntilExit } = render(<LogConfig />);
+    const { waitUntilExit } = render(
+      <GlobalProviders>
+        <LogConfig />
+      </GlobalProviders>
+    );
     await waitUntilExit();
   });
 
@@ -105,7 +130,11 @@ pr
   .description("List open pull requests")
   .option("-a, --all", "Show all pull requests in the repository", false)
   .action(async (options) => {
-    const { waitUntilExit } = render(<PRView showAll={options.all} />);
+    const { waitUntilExit } = render(
+      <GlobalProviders>
+        <PRView showAll={options.all} />
+      </GlobalProviders>
+    );
     await waitUntilExit();
   });
 
@@ -177,7 +206,11 @@ tix
   .description("List active Jira tickets")
   .option("-p, --peer", "Show searchable list of team members to observe", false)
   .action(async (options) => {
-    const { waitUntilExit } = render(<TixView isPeerMode={options.peer} />);
+    const { waitUntilExit } = render(
+      <GlobalProviders>
+        <TixView isPeerMode={options.peer} />
+      </GlobalProviders>
+    );
     await waitUntilExit();
   });
 
