@@ -22,14 +22,10 @@ export function LogView({ period = "day", sortBy = "newest", isCaptureMode = fal
   const { setIsFiltering, handleFilterChange, sync, ...data } = useLogView(period, sortBy);
 
   useEffect(() => {
-    sync();
-  }, [period, sync]);
-
-  useEffect(() => {
     if (isCaptureMode && data.status === "SUCCESS") {
       const html = generateHtmlReport(
         data.sortedLogs,
-        period,
+        data.currentPeriod,
         data.targetHours,
         data.calculationDay,
         data.daysRemaining,
@@ -37,7 +33,7 @@ export function LogView({ period = "day", sortBy = "newest", isCaptureMode = fal
         data.personalCount
       );
 
-      const filename = `kelar-report-${period}-${format(new Date(), "dd-MM-yyyy")}.html`;
+      const filename = `kelar-report-${data.currentPeriod}-${format(new Date(), "dd-MM-yyyy")}.html`;
       // @ts-ignore - Bun global
       Bun.write(filename, html).then(() => {
         setCapturedFile(filename);
@@ -46,7 +42,7 @@ export function LogView({ period = "day", sortBy = "newest", isCaptureMode = fal
     } else if (isCaptureMode && data.status === "ERROR") {
       exit();
     }
-  }, [data.status, isCaptureMode, exit, data.sortedLogs, period, data.targetHours, data.calculationDay, data.daysRemaining, data.totalMinutesAll, data.personalCount]);
+  }, [data.status, isCaptureMode, exit, data.sortedLogs, data.currentPeriod, data.targetHours, data.calculationDay, data.daysRemaining, data.totalMinutesAll, data.personalCount]);
 
   if (data.status === "ERROR") {
     return (
@@ -87,7 +83,7 @@ export function LogView({ period = "day", sortBy = "newest", isCaptureMode = fal
           </Box>
         ) : (
           <>
-            <Text bold color="cyan">Work Log Summary ({period.toUpperCase()})</Text>
+            <Text bold color="cyan">Work Log Summary ({data.currentPeriod.toUpperCase()})</Text>
             <Text color="dim"> | Sort: </Text>
             <Text color="yellow">{data.sortOptions.find(o => o.value === data.sortType)?.label || data.sortType}</Text>
             <Text color="dim"> | User: </Text>
@@ -99,7 +95,7 @@ export function LogView({ period = "day", sortBy = "newest", isCaptureMode = fal
       <LogTable
         logs={data.sortedLogs}
         selectedIndex={data.selectedIndex}
-        period={period}
+        period={data.currentPeriod}
         targetHours={data.targetHours}
         daysRemaining={data.daysRemaining}
         totalMinutes={data.totalMinutesAll}
@@ -112,6 +108,10 @@ export function LogView({ period = "day", sortBy = "newest", isCaptureMode = fal
         sortOptions={data.sortOptions}
         sortIndex={data.sortIndex}
         sortType={data.sortType}
+        isSelectingPeriod={data.isSelectingPeriod}
+        periodOptions={data.periodOptions}
+        periodIndex={data.periodIndex}
+        currentPeriod={data.currentPeriod}
         isFiltering={data.isFiltering}
         filterQuery={data.filterQuery}
         onFilterChange={handleFilterChange}

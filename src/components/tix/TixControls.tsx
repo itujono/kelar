@@ -1,6 +1,7 @@
 import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
 import { useTixContext } from "../../contexts/TixContext";
+import { SelectionMenu } from "../SelectionMenu";
 
 export function TixControls() {
   const {
@@ -18,25 +19,13 @@ export function TixControls() {
   return (
     <Box marginTop={1} flexDirection="column">
       {isSorting ? (
-        <Box borderStyle="single" borderColor="cyan" paddingX={1} marginBottom={1} flexDirection="column">
-          <Box backgroundColor="cyan" paddingX={1} marginRight={1} marginBottom={1} width={12}>
-            <Text bold color="black"> SORT BY </Text>
-          </Box>
-          {sortOptions.map((opt, i) => (
-            <Box key={opt.value}>
-              <Text color={i === sortIndex ? "cyan" : "dim"}>
-                {i === sortIndex ? "❯" : " "} {opt.label}
-                {sortType === opt.value ? " (active)" : ""}
-              </Text>
-            </Box>
-          ))}
-          <Box marginTop={1}>
-            <Text bold color="cyan">Enter</Text>
-            <Text color="dim"> to apply | </Text>
-            <Text bold color="cyan">Esc</Text>
-            <Text color="dim"> to close</Text>
-          </Box>
-        </Box>
+        <SelectionMenu
+          title="Sort By"
+          options={sortOptions}
+          selectedIndex={sortIndex}
+          currentValue={sortType}
+          borderColor="cyan"
+        />
       ) : isFiltering ? (
         <Box borderStyle="single" borderColor="yellow" paddingX={1} marginBottom={1} flexDirection="column">
           <Box>

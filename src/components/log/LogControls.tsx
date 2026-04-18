@@ -1,13 +1,18 @@
 import React from "react";
 import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
-import type { SortType } from "../../hooks/useLogView";
+import type { SortType, PeriodType } from "../../hooks/useLogView";
+import { SelectionMenu, type MenuOption } from "../SelectionMenu";
 
 interface LogControlsProps {
   isSorting: boolean;
-  sortOptions: Array<{ label: string; value: SortType }>;
+  sortOptions: Array<MenuOption<SortType>>;
   sortIndex: number;
   sortType: SortType;
+  isSelectingPeriod: boolean;
+  periodOptions: Array<MenuOption<PeriodType>>;
+  periodIndex: number;
+  currentPeriod: PeriodType;
   isFiltering: boolean;
   filterQuery: string;
   onFilterChange: (val: string) => void;
@@ -21,6 +26,10 @@ export const LogControls: React.FC<LogControlsProps> = ({
   sortOptions,
   sortIndex,
   sortType,
+  isSelectingPeriod,
+  periodOptions,
+  periodIndex,
+  currentPeriod,
   isFiltering,
   filterQuery,
   onFilterChange,
@@ -33,25 +42,21 @@ export const LogControls: React.FC<LogControlsProps> = ({
   return (
     <Box marginTop={1} flexDirection="column">
       {isSorting ? (
-        <Box borderStyle="single" borderColor="cyan" paddingX={1} marginBottom={1} flexDirection="column">
-          <Box backgroundColor="cyan" paddingX={1} marginRight={1} marginBottom={1} width={12}>
-            <Text bold color="black"> SORT BY </Text>
-          </Box>
-          {sortOptions.map((opt, i) => (
-            <Box key={opt.value}>
-              <Text color={i === sortIndex ? "cyan" : "dim"}>
-                {i === sortIndex ? "❯" : " "} {opt.label}
-                {sortType === opt.value ? " (active)" : ""}
-              </Text>
-            </Box>
-          ))}
-          <Box marginTop={1}>
-            <Text bold color="cyan">Enter</Text>
-            <Text color="dim"> to apply | </Text>
-            <Text bold color="cyan">Esc</Text>
-            <Text color="dim"> to close</Text>
-          </Box>
-        </Box>
+        <SelectionMenu
+          title="Sort By"
+          options={sortOptions}
+          selectedIndex={sortIndex}
+          currentValue={sortType}
+          borderColor="cyan"
+        />
+      ) : isSelectingPeriod ? (
+        <SelectionMenu
+          title="Period"
+          options={periodOptions}
+          selectedIndex={periodIndex}
+          currentValue={currentPeriod}
+          borderColor="magenta"
+        />
       ) : isFiltering ? (
         <Box borderStyle="single" borderColor="yellow" paddingX={1} marginBottom={1} flexDirection="column">
           <Box>
@@ -79,6 +84,7 @@ export const LogControls: React.FC<LogControlsProps> = ({
           <Text bold color="white">↑/↓</Text><Text color="dim"> navigate | </Text>
           <Text bold color="white">o</Text><Text color="dim"> open | </Text>
           <Text bold color="white">s</Text><Text color="dim"> sort | </Text>
+          <Text bold color="white">p</Text><Text color="dim"> period | </Text>
           <Text bold color="white">/</Text><Text color="dim"> filter | </Text>
           <Text bold color="white">r</Text><Text color="dim"> refetch | </Text>
           <Text bold color="white">q</Text><Text color="dim"> quit</Text>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useInput, useApp } from "ink";
 import { startOfDay, startOfWeek, startOfMonth, format, differenceInCalendarDays, addMonths, setDate } from "date-fns";
 import { dbOps, type LogDbRow } from "../db";
@@ -13,7 +13,7 @@ const CACHE_THRESHOLD_MINUTES = 5;
 
 export function useLogView(period: PeriodType, sortBy: SortType) {
   const { exit } = useApp();
-  const config = getAppConfig();
+  const config = useMemo(() => getAppConfig(), []);
 
   const targetHours = parseInt(config.MONTHLY_TARGET_HOURS, 10) || DEFAULT_MONTHLY_TARGET_HOURS;
   const calculationDay = parseInt(config.LAST_CALCULATION_DAY, 10) || DEFAULT_CALCULATION_DAY;
@@ -27,13 +27,22 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
   const [isSorting, setIsSorting] = useState(false);
   const [sortType, setSortType] = useState<SortType>(sortBy);
   const [sortIndex, setSortIndex] = useState(0);
+  const [currentPeriod, setCurrentPeriod] = useState<PeriodType>(period);
+  const [isSelectingPeriod, setIsSelectingPeriod] = useState(false);
+  const [periodIndex, setPeriodIndex] = useState(0);
 
-  const sortOptions = [
+  const sortOptions = useMemo(() => [
     { label: "Newest", value: "newest" as const },
     { label: "Oldest", value: "oldest" as const },
     { label: "Longest", value: "longest" as const },
     { label: "Shortest", value: "shortest" as const },
-  ];
+  ], []);
+
+  const periodOptions = useMemo(() => [
+    { label: "Today", value: "day" as const },
+    { label: "This Week", value: "week" as const },
+    { label: "This Month", value: "month" as const },
+  ], []);
 
   const getSinceDate = useCallback((p: PeriodType) => {
     const now = new Date();
@@ -44,7 +53,14 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     }
   }, []);
 
+  const statusRef = useRef(status);
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
   const sync = useCallback(async () => {
+    if (statusRef.current === "SYNCING") return;
+
     const { valid, missing } = isConfigValid();
     if (!valid) {
       setError(`Configuration incomplete. Missing: ${missing.join(", ")}`);
@@ -52,8 +68,8 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       return;
     }
 
-    const sinceDate = getSinceDate(period);
-    const lastSyncKey = `LAST_SYNC_${period.toUpperCase()}`;
+    const sinceDate = getSinceDate(currentPeriod);
+    const lastSyncKey = `LAST_SYNC_${currentPeriod.toUpperCase()}`;
 
     try {
       const lastSyncStr = dbOps.getConfig(lastSyncKey);
@@ -113,7 +129,11 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       setError(err.message);
       setStatus("ERROR");
     }
-  }, [period, config, getSinceDate]);
+  }, [currentPeriod, config, getSinceDate]);
+
+  useEffect(() => {
+    sync();
+  }, [currentPeriod, sync]);
 
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
@@ -180,6 +200,19 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       }
       return;
     }
+    if (isSelectingPeriod) {
+      if (key.escape) setIsSelectingPeriod(false);
+      if (key.upArrow) setPeriodIndex(prev => Math.max(0, prev - 1));
+      if (key.downArrow) setPeriodIndex(prev => Math.min(periodOptions.length - 1, prev + 1));
+      if (key.return) {
+        const option = periodOptions[periodIndex];
+        if (option && option.value !== currentPeriod) {
+          setCurrentPeriod(option.value);
+        }
+        setIsSelectingPeriod(false);
+      }
+      return;
+    }
 
     if (isFiltering) {
       if (key.escape) {
@@ -200,6 +233,12 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     if (input === "s") {
       setIsSorting(true);
       setSortIndex(0);
+      return;
+    }
+    if (input === "p") {
+      setIsSelectingPeriod(true);
+      const currentIndex = periodOptions.findIndex(o => o.value === currentPeriod);
+      setPeriodIndex(currentIndex !== -1 ? currentIndex : 0);
       return;
     }
     if (input === "r") {
@@ -240,6 +279,13 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     sortIndex,
     setSortIndex,
     sortOptions,
+    periodOptions,
+    currentPeriod,
+    setCurrentPeriod,
+    isSelectingPeriod,
+    setIsSelectingPeriod,
+    periodIndex,
+    setPeriodIndex,
     sortedLogs,
     filteredLogs,
     totalMinutesAll,
