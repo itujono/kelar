@@ -137,7 +137,7 @@ kelar tix list --peer
     - **`o`**: **Open** the ticket in your default browser.
     - **`c`**: **Copy** the Jira link to your clipboard.
     - **`/`**: Real-time filtering.
-    - **`s`**: Open **Sort Menu** (Newest, Oldest, Lead Time, Pickup Latency).
+    - **`s`**: Open **Sort Menu** (Newest, Oldest, Updated, High Priority).
 
 ## Command Reference
 
@@ -153,7 +153,7 @@ kelar tix list --peer
 ### Pull Requests (`pr`)
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
-| `kelar pr list` | `[--all]` | View active PRs. Use `--all` to see the work of the whole team. |
+| `kelar pr list` | `[--all] [--sort <type>]` | View active PRs. `--sort` options: `newest`, `oldest`, `longest`, `shortest`. |
 | `kelar pr config list` | - | View current Bitbucket configuration. |
 | `kelar pr config set` | `<key> <val>` | Update Bitbucket config (e.g. `BITBUCKET_REPO_SLUG`). |
 

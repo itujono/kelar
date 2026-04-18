@@ -11,8 +11,7 @@ import {
   postWorklog,
   updateIssueEstimate,
   fetchActivityCountToday,
-  fetchUserWorklogs,
-  clearTixCache
+  fetchUserWorklogs
 } from "../jira";
 import { getAppConfig, DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS } from "../config";
 import { parseJiraTime, getNowWithOffset } from "../utils";
@@ -29,7 +28,7 @@ export function useTixView(isPeerMode: boolean) {
   const [isUserSelecting, setIsUserSelecting] = useState(isPeerMode && !accountId);
 
   const [isSorting, setIsSorting] = useState(false);
-  const [sortType, setSortType] = useState<"newest" | "oldest" | "priority" | "updated">("newest");
+  const [sortType, setSortType] = useState<"newest" | "oldest" | "priority" | "updated">("updated");
   const [sortIndex, setSortIndex] = useState(0);
 
   const sortOptions = [
