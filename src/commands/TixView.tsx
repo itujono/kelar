@@ -6,26 +6,22 @@ import { TixDetailPane } from "../components/tix/TixDetailPane";
 import { formatMinutes } from "../utils";
 import { TixControls } from "../components/tix/TixControls";
 import { TixModal } from "../components/tix/TixModal";
-import { useTixView } from "../hooks/useTixView";
+import { TixProvider, useTixContext } from "../contexts/TixContext";
 
 interface TixViewProps {
   isPeerMode?: boolean;
 }
 
 export function TixView({ isPeerMode = false }: TixViewProps) {
-  const {
-    setFilterQuery,
-    setIsFiltering,
-    handleUserSearchChange,
-    setIsUserSelecting,
-    setLogTime,
-    setLogComment,
-    setLogFocus,
-    setEstimateValue,
-    handleLogSubmit,
-    handleEstimateSubmit,
-    ...data
-  } = useTixView(isPeerMode);
+  return (
+    <TixProvider isPeerMode={isPeerMode}>
+      <TixViewContent />
+    </TixProvider>
+  );
+}
+
+function TixViewContent() {
+  const { handleUserSearchChange, ...data } = useTixContext();
 
   if (data.isUserSelecting) {
     return (
@@ -87,17 +83,7 @@ export function TixView({ isPeerMode = false }: TixViewProps) {
         )}
       </Box>
 
-      <TixControls
-        isSorting={data.isSorting}
-        sortOptions={data.sortOptions}
-        sortIndex={data.sortIndex}
-        sortType={data.sortType}
-        isFiltering={data.isFiltering}
-        filterQuery={data.filterQuery}
-        onFilterChange={setFilterQuery}
-        onFilterSubmit={() => setIsFiltering(false)}
-        filteredTicketsCount={data.sortedTickets.length}
-      />
+      <TixControls />
 
       {data.accountId && (
         <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1} flexDirection="column">
@@ -128,25 +114,7 @@ export function TixView({ isPeerMode = false }: TixViewProps) {
       )}
 
       {/* Modals */}
-      <TixModal
-        activeModal={data.activeModal}
-        activeTicket={data.activeTicket}
-        logTime={data.logTime}
-        setLogTime={setLogTime}
-        logComment={data.logComment}
-        setLogComment={setLogComment}
-        logFocus={data.logFocus}
-        setLogFocus={setLogFocus}
-        onLogSubmit={handleLogSubmit}
-        isLogPending={data.logMutation.isPending}
-        isLoadingTransitions={data.isLoadingTransitions}
-        isConfirmingMove={data.isConfirmingMove}
-        transitions={data.transitions}
-        transitionIndex={data.transitionIndex}
-        estimateValue={data.estimateValue}
-        setEstimateValue={setEstimateValue}
-        onEstimateSubmit={handleEstimateSubmit}
-      />
+      <TixModal />
     </Box>
   );
 }

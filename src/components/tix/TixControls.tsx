@@ -1,34 +1,20 @@
 import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
+import { useTixContext } from "../../contexts/TixContext";
 
-interface SortOption {
-  label: string;
-  value: string;
-}
+export function TixControls() {
+  const {
+    isSorting,
+    sortOptions,
+    sortIndex,
+    sortType,
+    isFiltering,
+    filterQuery,
+    setFilterQuery,
+    setIsFiltering,
+    sortedTickets
+  } = useTixContext();
 
-interface TixControlsProps {
-  isSorting: boolean;
-  sortOptions: SortOption[];
-  sortIndex: number;
-  sortType: string;
-  isFiltering: boolean;
-  filterQuery: string;
-  onFilterChange: (val: string) => void;
-  onFilterSubmit: () => void;
-  filteredTicketsCount: number;
-}
-
-export function TixControls({
-  isSorting,
-  sortOptions,
-  sortIndex,
-  sortType,
-  isFiltering,
-  filterQuery,
-  onFilterChange,
-  onFilterSubmit,
-  filteredTicketsCount
-}: TixControlsProps) {
   return (
     <Box marginTop={1} flexDirection="column">
       {isSorting ? (
@@ -57,10 +43,10 @@ export function TixControls({
             <Box backgroundColor="yellow" paddingX={1} marginRight={1}>
               <Text bold color="black"> FILTER </Text>
             </Box>
-            <TextInput value={filterQuery} onChange={onFilterChange} onSubmit={onFilterSubmit} />
+            <TextInput value={filterQuery} onChange={setFilterQuery} onSubmit={() => setIsFiltering(false)} />
           </Box>
           <Box marginTop={1}>
-            <Text color="yellow"> {filteredTicketsCount} matches | </Text>
+            <Text color="yellow"> {sortedTickets.length} matches | </Text>
             <Text bold color="cyan">Enter</Text>
             <Text color="dim"> to keep | </Text>
             <Text bold color="cyan">Esc</Text>

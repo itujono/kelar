@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
-import { useInput, useApp } from "ink";
+import { useApp } from "ink";
+import { useTixShortcuts } from "./useTixShortcuts";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, startOfMonth, differenceInCalendarDays, setDate, addMonths } from "date-fns";
 import {
@@ -38,7 +39,6 @@ export function useTixView(isPeerMode: boolean) {
     { label: "High Priority", value: "priority" as const },
   ];
 
-  // Modals state
   const [activeModal, setActiveModal] = useState<"log" | "move" | "estimate" | "view" | null>(null);
   const [logTime, setLogTime] = useState("");
   const [logComment, setLogComment] = useState("");
@@ -47,7 +47,6 @@ export function useTixView(isPeerMode: boolean) {
   const [transitionIndex, setTransitionIndex] = useState(0);
   const [isConfirmingMove, setIsConfirmingMove] = useState(false);
 
-  // Queries
   const { data: users, isLoading: isLoadingUsers } = useQuery({
     queryKey: ["users", userSearchQuery],
     queryFn: () => fetchUsers(userSearchQuery),
@@ -76,7 +75,7 @@ export function useTixView(isPeerMode: boolean) {
     enabled: !!accountId && !isUserSelecting
   });
 
-  const totalMinutesAll = useMemo(() => 
+  const totalMinutesAll = useMemo(() =>
     monthlyLogs?.reduce((sum, log) => sum + Math.round(log.timeSpentSeconds / 60), 0) || 0,
     [monthlyLogs]
   );
@@ -121,7 +120,6 @@ export function useTixView(isPeerMode: boolean) {
     enabled: activeModal === "move" && !!activeTicket
   });
 
-  // Mutations
   const queryCache = useQueryClient();
   const logMutation = useMutation({
     mutationFn: (data: { key: string, minutes: number, comment: string }) =>
@@ -179,109 +177,36 @@ export function useTixView(isPeerMode: boolean) {
     setSelectedIndex(0);
   }, []);
 
-  useInput((input, key) => {
-    if (activeModal) {
-      if (key.escape) setActiveModal(null);
-
-      if (activeModal === "log") {
-        if (key.tab) {
-          setLogFocus(f => f === "time" ? "comment" : "time");
-          return;
-        }
-      }
-
-      if (activeModal === "move" && transitions) {
-        if (isConfirmingMove) {
-          if (key.return) {
-            const t = transitions[transitionIndex];
-            if (t && activeTicket) {
-              transitionMutation.mutate({ key: activeTicket.key, id: t.id });
-            }
-            setIsConfirmingMove(false);
-          }
-          if (key.escape || key.backspace) {
-            setIsConfirmingMove(false);
-          }
-          return;
-        }
-
-        if (key.upArrow) setTransitionIndex(p => Math.max(0, p - 1));
-        if (key.downArrow) setTransitionIndex(p => Math.min(transitions.length - 1, p + 1));
-        if (key.return) {
-          setIsConfirmingMove(true);
-        }
-      }
-      return;
-    }
-
-    if (isSorting) {
-      if (key.escape) setIsSorting(false);
-      if (key.upArrow) setSortIndex(prev => Math.max(0, prev - 1));
-      if (key.downArrow) setSortIndex(prev => Math.min(sortOptions.length - 1, prev + 1));
-      if (key.return) {
-        const option = sortOptions[sortIndex];
-        if (option) {
-          setSortType(option.value);
-        }
-        setIsSorting(false);
-      }
-      return;
-    }
-
-    if (isUserSelecting) {
-      if (key.escape && !isPeerMode) setIsUserSelecting(false);
-      if (key.upArrow) setSelectedIndex(p => Math.max(0, p - 1));
-      if (key.downArrow) setSelectedIndex(p => Math.min(filteredUsers.length - 1, p + 1));
-      if (key.return) {
-        const user = filteredUsers[selectedIndex];
-        if (user) {
-          setAccountId(user.accountId);
-          setSelectedUserName(user.displayName);
-          setIsUserSelecting(false);
-          setSelectedIndex(0);
-        }
-      }
-      return;
-    }
-
-    if (isFiltering) {
-      if (key.escape) {
-        setIsFiltering(false);
-        setFilterQuery("");
-      }
-      if (key.return) setIsFiltering(false);
-      return;
-    }
-
-    if (input === "q") exit();
-    if (input === "/") { setIsFiltering(true); setFilterQuery(""); }
-    if (input === "s") { setIsSorting(true); setSortIndex(0); }
-    if (key.upArrow) setSelectedIndex(p => Math.max(0, p - 1));
-    if (key.downArrow) setSelectedIndex(p => Math.min(sortedTickets.length - 1, p + 1));
-
-    if (activeTicket) {
-      if (input === "l") setActiveModal("log");
-      if (input === "m") { setActiveModal("move"); setTransitionIndex(0); }
-      if (input === "e") setActiveModal("estimate");
-      if (input === "v") setActiveModal("view");
-      if (input === "c") {
-        const domain = config.JIRA_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
-        const url = `https://${domain}/browse/${activeTicket.key}`;
-        // @ts-ignore
-        Bun.spawn(["pbcopy"], { stdin: Buffer.from(url) });
-      }
-      if (input === "o") {
-        const domain = config.JIRA_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
-        const url = `https://${domain}/browse/${activeTicket.key}`;
-        // @ts-ignore
-        Bun.spawn(["open", url]);
-      }
-    }
-
-    if (input === "r") {
-      clearTixCache();
-      refetchTickets();
-    }
+  useTixShortcuts({
+    activeModal,
+    setActiveModal,
+    setLogFocus,
+    transitions,
+    isConfirmingMove,
+    setIsConfirmingMove,
+    transitionIndex,
+    setTransitionIndex,
+    activeTicket,
+    transitionMutation,
+    isSorting,
+    setIsSorting,
+    sortIndex,
+    setSortIndex,
+    sortOptions,
+    setSortType,
+    isUserSelecting,
+    setIsUserSelecting,
+    isPeerMode,
+    filteredUsers,
+    selectedIndex,
+    setSelectedIndex,
+    setAccountId,
+    setSelectedUserName,
+    isFiltering,
+    setIsFiltering,
+    setFilterQuery,
+    refetchTickets,
+    sortedTickets
   });
 
   return {
