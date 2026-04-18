@@ -1,241 +1,20 @@
-import { useState } from "react";
-import { Box, Text, useInput, useApp } from "ink";
-import { useQuery, useQueries } from "@tanstack/react-query";
+import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import { PRTable } from "../components/pr/PRTable";
 import { PRDetailPane } from "../components/pr/PRDetailPane";
 import { PRControls } from "../components/pr/PRControls";
-import { fetchPRs, fetchPRActivity, fetchPRComments, fetchMe, calculateVelocity, type BitbucketUser } from "../bitbucket";
-import { queryClient } from "../queryClient";
-import { isBitbucketConfigValid, getBitbucketConfig } from "../config";
+import { isBitbucketConfigValid } from "../config";
+import { usePRView, type PRSortType } from "../hooks/usePRView";
+
+export { type PRSortType };
 
 interface PRViewProps {
   showAll?: boolean;
+  sortBy?: PRSortType;
 }
 
-type PRSortType = "newest" | "oldest" | "longest" | "shortest";
-
-export function PRView({ showAll = false }: PRViewProps) {
-  const { exit } = useApp();
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [filterQuery, setFilterQuery] = useState("");
-  const [isFiltering, setIsFiltering] = useState(false);
-  const [sortBy, setSortBy] = useState<PRSortType>("newest");
-  const [isSorting, setIsSorting] = useState(false);
-  const [sortIndex, setSortIndex] = useState(0);
-
-  const sortOptions: { label: string; value: PRSortType }[] = [
-    { label: "Newest", value: "newest" },
-    { label: "Oldest", value: "oldest" },
-    { label: "Longest Lead Time", value: "longest" },
-    { label: "Shortest Pickup Latency", value: "shortest" },
-  ];
-
-  const { data: prs, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["prs", showAll],
-    queryFn: () => fetchPRs(showAll),
-  });
-
-  const filteredPrs = prs?.filter(pr => {
-    if (!filterQuery) return true;
-    const search = filterQuery.toLowerCase();
-    return (
-      pr.title.toLowerCase().includes(search) ||
-      pr.source.branch.name.toLowerCase().includes(search) ||
-      pr.id.toString().includes(search)
-    );
-  }) || [];
-
-  // Parallel activity fetching for velocity-based sorting
-  useQueries({
-    queries: filteredPrs.map(pr => ({
-      queryKey: ["pr", pr.id, "activity"],
-      queryFn: () => fetchPRActivity(pr.id),
-      enabled: sortBy === "shortest" || isSorting, // Prefetch when in sort mode
-      staleTime: 1000 * 60 * 10,
-    }))
-  });
-
-  const commentsQueries = useQueries({
-    queries: filteredPrs.map(pr => ({
-      queryKey: ["pr", pr.id, "comments"],
-      queryFn: () => fetchPRComments(pr.id),
-      staleTime: 1000 * 60 * 5,
-    }))
-  });
-
-  const { data: me } = useQuery({
-    queryKey: ["me"],
-    queryFn: fetchMe,
-    staleTime: 1000 * 60 * 60, // Cache for an hour
-  });
-
-  const prMetrics = Object.fromEntries(
-    commentsQueries
-      .map((query, index): [number, { fb: number; nr: number | null }] | null => {
-        const pr = filteredPrs[index];
-        if (!pr) return null;
-
-        const comments = query.data;
-        if (!comments) return [pr.id, { fb: 0, nr: null }];
-
-        const myAccountId = me?.account_id?.toLowerCase();
-        const myNickname = me?.nickname?.toLowerCase();
-
-        const isMe = (u: BitbucketUser) => {
-          if (myAccountId && u.account_id?.toLowerCase() === myAccountId) return true;
-          if (myNickname && u.nickname?.toLowerCase() === myNickname) return true;
-
-          // Fallback logic
-          const config = getBitbucketConfig();
-          const myUsername = config.BITBUCKET_USERNAME?.toLowerCase().trim();
-          const myHandle = myUsername?.includes("@") ? myUsername.split("@")[0] : myUsername;
-          const nick = u.nickname?.toLowerCase().trim();
-          const display = u.display_name?.toLowerCase().trim();
-          const account = u.account_id?.toLowerCase().trim();
-
-          return (
-            nick === myUsername ||
-            nick === myHandle ||
-            display === myUsername ||
-            display === myHandle ||
-            (myUsername && display?.includes(myUsername)) ||
-            (myHandle && display?.includes(myHandle)) ||
-            account === myUsername ||
-            account === myHandle
-          );
-        };
-
-        // Feedbacks: Comments NOT by me
-        const peerComments = comments.filter(c => !isMe(c.user));
-
-        // Not Replied: Peer comments that are unresolved AND have no reply from me
-        const nrCount = peerComments.filter(peerComment => {
-          if (peerComment.is_resolved) return false;
-
-          // Check if I have replied to this specific comment
-          const hasMyReply = comments.some(c => {
-            return isMe(c.user) && c.parent?.id === peerComment.id;
-          });
-
-          // Also check if any child of this comment is by me? 
-          // (Bitbucket threading can be multiple levels but standard is parent/child)
-          return !hasMyReply;
-        }).length;
-
-        return [pr.id, { fb: peerComments.length, nr: nrCount }];
-      })
-      .filter((entry): entry is [number, { fb: number; nr: number | null }] => entry !== null)
-  ) as Record<number, { fb: number; nr: number | null }>;
-
-  const sortedPrs = [...filteredPrs].sort((a, b) => {
-    const timeA = new Date(a.created_on).getTime();
-    const timeB = new Date(b.created_on).getTime();
-
-    if (sortBy === "newest") return timeB - timeA;
-    if (sortBy === "oldest" || sortBy === "longest") return timeA - timeB;
-
-    if (sortBy === "shortest") {
-      const actA = queryClient.getQueryData(["pr", a.id, "activity"]) as any[];
-      const actB = queryClient.getQueryData(["pr", b.id, "activity"]) as any[];
-      const velA = actA ? calculateVelocity(a, actA).pickupLatency : Infinity;
-      const velB = actB ? calculateVelocity(b, actB).pickupLatency : Infinity;
-      return (velA ?? Infinity) - (velB ?? Infinity);
-    }
-
-    return 0;
-  });
-
-  const activePR = sortedPrs[selectedIndex];
-
-  useInput((input, key) => {
-    if (isSorting) {
-      if (key.upArrow) {
-        setSortIndex(prev => Math.max(0, prev - 1));
-        return;
-      }
-      if (key.downArrow) {
-        setSortIndex(prev => Math.min(sortOptions.length - 1, prev + 1));
-        return;
-      }
-      if (key.return) {
-        const option = sortOptions[sortIndex];
-        if (option) {
-          setSortBy(option.value);
-        }
-        setIsSorting(false);
-        setSelectedIndex(0);
-        return;
-      }
-
-      if (key.escape) {
-        setIsSorting(false);
-        return;
-      }
-      return;
-    }
-
-    if (input === "/" && !isFiltering) {
-      setIsFiltering(true);
-      setFilterQuery("");
-      setSelectedIndex(0);
-      return;
-    }
-
-    if (input === "s" && !isFiltering) {
-      setIsSorting(true);
-      return;
-    }
-
-    if (key.escape) {
-      if (isFiltering) {
-        setIsFiltering(false);
-        setFilterQuery("");
-        setSelectedIndex(0);
-      }
-      return;
-    }
-
-    if (isFiltering) return; // Let TextInput handle it
-
-    if (input === "q") {
-      exit();
-    }
-
-    if (key.upArrow) {
-      setSelectedIndex((prev) => Math.max(0, prev - 1));
-    }
-
-    if (key.downArrow) {
-      setSelectedIndex((prev) => Math.min(sortedPrs.length - 1, prev + 1));
-    }
-
-    if (input === "r") {
-      refetch();
-    }
-
-    if (input === "o" && activePR) {
-      const url = activePR.links.html.href;
-      // @ts-ignore - Bun global
-      Bun.spawn(["open", url]);
-    }
-
-    if (input === "c" && activePR) {
-      const branch = activePR.source.branch.name;
-      // @ts-ignore - Bun global
-      const proc = Bun.spawn(["pbcopy"], {
-        stdin: Buffer.from(branch),
-      });
-    }
-  });
-
-  const handleFilterChange = (val: string) => {
-    const sanitized = val.replace(/^\/+/, "");
-    setFilterQuery(sanitized);
-    setSelectedIndex(0);
-  };
-
-
+export function PRView({ showAll = false, sortBy = "newest" }: PRViewProps) {
+  const { setIsFiltering, handleFilterChange, ...data } = usePRView(showAll, sortBy);
 
   if (!isBitbucketConfigValid().valid) {
     const missing = isBitbucketConfigValid().missing;
@@ -250,7 +29,7 @@ export function PRView({ showAll = false }: PRViewProps) {
     );
   }
 
-  if (isLoading) {
+  if (data.isLoading) {
     return (
       <Box padding={1}>
         <Spinner type="dots" />
@@ -259,16 +38,16 @@ export function PRView({ showAll = false }: PRViewProps) {
     );
   }
 
-  if (isError) {
+  if (data.isError) {
     return (
       <Box padding={1} flexDirection="column">
         <Text color="red">Error fetching PRs:</Text>
-        <Text>{(error as Error).message}</Text>
+        <Text>{(data.error as Error).message}</Text>
       </Box>
     );
   }
 
-  if (!prs || prs.length === 0) {
+  if (!data.prs || data.prs.length === 0) {
     return (
       <Box padding={1} flexDirection="column">
         <Text color="dim">No active pull requests found.</Text>
@@ -284,37 +63,34 @@ export function PRView({ showAll = false }: PRViewProps) {
       <Box marginBottom={1}>
         <Text bold color="cyan">Bitbucket PR Observability {showAll ? "(ALL)" : "(MINE)"}</Text>
         <Text color="dim"> | sorted by: </Text>
-        <Text color="yellow">{sortBy}</Text>
+        <Text color="yellow">{data.sortBy}</Text>
       </Box>
 
       <Box flexDirection="row" minHeight={20}>
         <Box flexGrow={1} marginRight={2}>
           <PRTable
-            prs={sortedPrs}
-            selectedIndex={selectedIndex}
+            prs={data.sortedPrs}
+            selectedIndex={data.selectedIndex}
             showMeColumn={showAll}
-            metrics={prMetrics}
+            metrics={data.prMetrics}
           />
         </Box>
 
-        {activePR && <PRDetailPane pr={activePR} />}
+        {data.activePR && <PRDetailPane pr={data.activePR} />}
       </Box>
 
-
       <PRControls
-        isSorting={isSorting}
-        sortOptions={sortOptions}
-        sortIndex={sortIndex}
-        sortBy={sortBy}
-        isFiltering={isFiltering}
-        filterQuery={filterQuery}
+        isSorting={data.isSorting}
+        sortOptions={data.sortOptions}
+        sortIndex={data.sortIndex}
+        sortBy={data.sortBy}
+        isFiltering={data.isFiltering}
+        filterQuery={data.filterQuery}
         onFilterChange={handleFilterChange}
         onFilterSubmit={() => setIsFiltering(false)}
-        filteredPrsCount={sortedPrs.length}
-        activePR={activePR}
+        filteredPrsCount={data.sortedPrs.length}
+        activePR={data.activePR}
       />
     </Box>
   );
-};
-
-
+}

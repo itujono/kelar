@@ -9,6 +9,7 @@ import { setAppConfig, type ConfigKey, CONFIG_KEYS, BITBUCKET_CONFIG_KEYS, type 
 import { Text, Box } from "ink";
 import { PRView } from "./commands/PRView";
 import { TixView } from "./commands/TixView";
+import { type PRSortType } from "./hooks/usePRView";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./queryClient";
 
@@ -129,10 +130,11 @@ pr
   .command("list")
   .description("List open pull requests")
   .option("-a, --all", "Show all pull requests in the repository", false)
+  .option("-s, --sort <type>", "Sort by (newest, oldest, longest, shortest)", "newest")
   .action(async (options) => {
     const { waitUntilExit } = render(
       <GlobalProviders>
-        <PRView showAll={options.all} />
+        <PRView showAll={options.all} sortBy={options.sort as PRSortType} />
       </GlobalProviders>
     );
     await waitUntilExit();
