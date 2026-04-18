@@ -42,8 +42,11 @@ kelar pr config set BITBUCKET_EMAIL your@email.com
 kelar pr config set BITBUCKET_TOKEN your_atlassian_api_token
 kelar pr config set BITBUCKET_WORKSPACE workspace-slug
 kelar pr config set BITBUCKET_REPO_SLUG repo-slug
-kelar pr config set BITBUCKET_USERNAME your_username  # For "MINE" filter
+kelar pr config set BITBUCKET_USERNAME your_username  # For identifying your work, approvals, and replies
 ```
+
+> [!TIP]
+> **Identity Discovery**: Kelar automatically fetches your canonical Bitbucket profile (nickname, account ID) to ensure your approvals and replies are correctly identified, even if your login username differs from your display name.
 
 ## Usage
 
@@ -84,13 +87,18 @@ kelar pr list
 kelar pr list --all
 ```
 
-#### Dual-Pane Dashboard
-- **Table View**: Browse PRs with relative timestamps (`~ 2 hours`), approval counts, and health metrics (`FB` for comments, `UN` for open tasks). Includes a personal **"Me"** column tracking your approval status on team PRs.
-- **Detail Pane**: Get a deep-dive into the selected PR:
-    - **Velocity Metrics**: Track **Lead Time** and **Pick-up Latency** (time to first peer interaction).
-    - **Reviewer Status**: See who has approved (`✓`) vs. who is still pending (`○`).
-    - **Peer Feedback**: Detailed breakdown of **Resolved** vs. **Unresolved** comments from your peers.
-- **Interactive Controls**:
+#### Table View
+- All list views (Logs, Tickets, PRs) utilize a standardized, high-fidelity `Table` component with rounded borders and integrated metadata headers/footers.
+- Tables intelligently scale by shrinking flexible text columns (like `Title` or `Label`) while preserving vital fixed-width columns (`ID`, `Status`, `Prio`), ensuring a perfect fit across different terminal widths and side panes.
+- Browse PRs with relative timestamps (`~ 2 hours`), approval counts, and refined metrics:
+    - **`FB`**: Total Feedbacks (comments made by peers).
+    - **`NR`**: Not Replied (unresolved peer comments that haven't received a reply from you yet).
+    - **`Me`**: A personal status column tracking your own approval state on team PRs.
+- Get a deep-dive into the selected PR:
+    - Track **Lead Time** and **Pick-up Latency** (time to first peer interaction).
+    - See who has approved (`✓`) vs. who is still pending (`○`).
+    - Detailed breakdown of **Resolved** vs. **Not Replied** comments from your peers, relative to your own identity.
+- Interactive Controls:
     - **`↑/↓`**: Navigate the list.
     - **`/`**: Enter **Filter Mode** to search by Title, Branch, or ID.
     - **`s`**: Open **Sort Menu** (Newest, Oldest, Lead Time, Pickup Latency).
@@ -111,13 +119,14 @@ kelar tix list --peer
 ```
 
 #### Observability Dashboard
-- **Table View**: Browse tickets with **ID, Prio, Title, Status, Assignee, Est, Log, Created, and Updated** columns.
-- **Detail Pane (Intelligence)**:
-    - **Zombie Status**: Highlights tickets with no activity in >48 hours.
-    - **Dependency Tree**: Recursive ASCII visualization of "Blocked By" links.
-    - **Context Score**: Daily count of unique tickets you've interacted with.
-- **Monthly Progress Pane**: Visual progress bar, percentage tracking against your hours goal, and a deadline countdown.
-- **Interactive Controls**:
+- Browse tickets with a compact layout featuring **ID, Prio, Title, Status, Assignee, Est, Log, Created, and Updated** columns.
+- The ticket table footer tracks your overall monthly stats (Total, To-Do, In Progress, Review, and "Zombie" tickets) within the single unified view.
+- Detail Pane:
+    - Highlights tickets with no activity in >48 hours (zombie tickets).
+    - Recursive ASCII visualization of "Blocked By" links.
+    - Daily count of unique tickets you've interacted with.
+- Visual progress bar, percentage tracking against your hours goal, and a deadline countdown.
+- Interactive Controls:
     - **`l`**: **Log Work** with a multi-field modal (Time & Comment).
     - **`m`**: **Move** ticket status via interactive transition selection.
     - **`e`**: **Estimate** original time.
@@ -126,21 +135,16 @@ kelar tix list --peer
     - **`c`**: **Copy** the Jira link to your clipboard.
     - **`/` & `s`**: Real-time filtering and sorting options.
 
-#### Performance & Accuracy
-- **High Performance**: Parallelized worklog fetching (N+1 to constant/parallel requests) reducing resolution time by ~90%.
-- **Bandwidth Saving**: Only fetches tickets updated since the 1st of the current month.
-
-
 ## Data Storage & Security
 
-- **Local Database**: All worklogs and configuration (including your tokens) are stored in `~/.kelar/kelar.db`.
-- **Safe for Contribution**: Data is stored outside the project folder, so you can safely push code without leaking secrets.
-- **Privacy**: No data is shared outside of your machine and your designated Atlassian domains.
+- All worklogs and configuration (including your tokens) are stored in `~/.kelar/kelar.db`.
+- Data is stored outside the project folder, so you can safely push code without leaking secrets.
+- No data is shared outside of your machine and your designated Atlassian domains.
 
 ## Technical Details
 
-- **Runtime**: Bun
-- **UI Engine**: Ink-based flexbox layouts
-- **Database**: SQLite (via `bun:sqlite`)
-- **API**: Jira Cloud & Bitbucket Cloud REST APIs (v3/v2)
-- **Timezone**: Syncs using a fixed `+0700` offset.
+- Bun
+- Ink-based flexbox layouts
+- SQLite (via `bun:sqlite`)
+- Jira Cloud & Bitbucket Cloud REST APIs (v3/v2)
+- Timezone using a fixed GMT+7 offset.

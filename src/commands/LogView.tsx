@@ -342,8 +342,8 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "newe
             columns={["Date", "Identifier", "Label", "Type", "Time"]}
             columnWidths={{
               Date: 10,
-              Identifier: 40,
-              Label: 100,
+              Identifier: 30,
+              Label: 120,
               Type: 12,
               Time: 10
             }}

@@ -36,15 +36,15 @@ const getPriorityColor = (priorityName: string): string => {
 
 export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) => {
   const COL_WIDTHS = {
-    ID: 12,
+    ID: 8,
     Prio: 8,
-    Title: 70,
+    Title: 100,
     Status: 12,
     Assignee: 12,
     Est: 8,
     Log: 8,
-    Created: 14,
-    Updated: 14,
+    Created: 10,
+    Updated: 10,
   };
 
   if (tickets.length === 0) {

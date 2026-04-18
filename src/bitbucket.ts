@@ -89,6 +89,9 @@ export interface BitbucketComment {
   created_on: string;
   updated_on: string;
   is_resolved: boolean;
+  parent?: {
+    id: number;
+  };
   inline?: {
     path: string;
   };
@@ -183,9 +186,24 @@ export const fetchPRStatuses = async (prId: number): Promise<BitbucketStatus[]> 
   return data.values || [];
 };
 
+export const fetchMe = async (): Promise<BitbucketUser> => {
+  const response = await fetch(`https://api.bitbucket.org/2.0/user`, {
+    headers: { "Authorization": getAuthHeader() },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch current user: ${response.statusText}`);
+  }
+
+  return await response.json() as BitbucketUser;
+};
+
 export const fetchPRComments = async (prId: number): Promise<BitbucketComment[]> => {
   const baseUrl = getBaseUrl();
-  const response = await fetch(`${baseUrl}/pullrequests/${prId}/comments`, {
+  const url = new URL(`${baseUrl}/pullrequests/${prId}/comments`);
+  url.searchParams.append("fields", "values.*,values.parent.id");
+
+  const response = await fetch(url.toString(), {
     headers: { "Authorization": getAuthHeader() },
   });
 

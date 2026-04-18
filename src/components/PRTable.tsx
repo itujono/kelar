@@ -9,14 +9,14 @@ interface PRTableProps {
   prs: BitbucketPR[];
   selectedIndex: number;
   showMeColumn?: boolean;
-  unresolvedCounts?: Record<number, number | null>;
+  metrics?: Record<number, { fb: number; nr: number | null }>;
 }
 
 export const PRTable: React.FC<PRTableProps> = ({
   prs,
   selectedIndex,
   showMeColumn = true,
-  unresolvedCounts = {}
+  metrics = {}
 }) => {
   const config = getBitbucketConfig();
   const myUsername = config.BITBUCKET_USERNAME?.toLowerCase();
@@ -37,7 +37,7 @@ export const PRTable: React.FC<PRTableProps> = ({
     title: showMeColumn ? 80 : 86,
     me: 6,
     fb: 6,
-    un: 6,
+    nr: 6,
     created: 14,
     updated: 14,
     status: 8,
@@ -84,16 +84,15 @@ export const PRTable: React.FC<PRTableProps> = ({
       }
 
       const approvals = pr.participants?.filter(p => p.approved || p.state === "approved").length || 0;
-      const feedback = pr.comment_count || 0;
-      const unresolved = unresolvedCounts[pr.id] ?? 0;
+      const m = metrics[pr.id] || { fb: 0, nr: 0 };
 
       return {
         id: `#${pr.id}`,
         author: authorName,
         title: pr.title,
         me: showMeColumn ? myReviewIcon : "",
-        fb: feedback,
-        un: unresolved,
+        fb: m.fb,
+        nr: m.nr ?? 0,
         created: formatRelativeTime(new Date(pr.created_on)),
         updated: formatRelativeTime(new Date(pr.updated_on)),
         status: approvals > 0 ? `✓ ${approvals}` : `○ ${approvals}`,
@@ -103,7 +102,7 @@ export const PRTable: React.FC<PRTableProps> = ({
     columns={[
       "id", "author", "title",
       ...(showMeColumn ? ["me"] : []),
-      "fb", "un", "created", "updated", "status"
+      "fb", "nr", "created", "updated", "status"
     ] as any}
     columnWidths={COL_WIDTHS}
     compact
@@ -124,7 +123,7 @@ export const PRTable: React.FC<PRTableProps> = ({
       if (col === "fb") {
         return <Text color={isSelected ? "black" : (val > 0 ? "magenta" : "dim")}>{val}</Text>;
       }
-      if (col === "un") {
+      if (col === "nr") {
         return <Text color={isSelected ? "black" : (val > 0 ? "red" : "dim")}>{val}</Text>;
       }
       if (col === "status") {

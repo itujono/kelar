@@ -5,8 +5,8 @@ import { QueryClientProvider, useQuery, useQueries } from "@tanstack/react-query
 import Spinner from "ink-spinner";
 import { PRTable } from "../components/PRTable";
 import { PRDetailPane } from "../components/PRDetailPane";
-import { fetchPRs, fetchPRActivity, fetchPRComments, calculateVelocity, queryClient } from "../bitbucket";
-import { isBitbucketConfigValid } from "../config";
+import { fetchPRs, fetchPRActivity, fetchPRComments, fetchMe, calculateVelocity, queryClient, type BitbucketUser } from "../bitbucket";
+import { isBitbucketConfigValid, getBitbucketConfig } from "../config";
 
 interface PRViewProps {
   showAll?: boolean;
@@ -46,7 +46,7 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
   }) || [];
 
   // Parallel activity fetching for velocity-based sorting
-  const activityQueries = useQueries({
+  useQueries({
     queries: filteredPrs.map(pr => ({
       queryKey: ["pr", pr.id, "activity"],
       queryFn: () => fetchPRActivity(pr.id),
@@ -63,21 +63,69 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
     }))
   });
 
-  const unresolvedCounts = Object.fromEntries(
+  const { data: me } = useQuery({
+    queryKey: ["me"],
+    queryFn: fetchMe,
+    staleTime: 1000 * 60 * 60, // Cache for an hour
+  });
+
+  const prMetrics = Object.fromEntries(
     commentsQueries
-      .map((query, index) => {
+      .map((query, index): [number, { fb: number; nr: number | null }] | null => {
         const pr = filteredPrs[index];
         if (!pr) return null;
 
         const comments = query.data;
-        if (!comments) return [pr.id, null];
+        if (!comments) return [pr.id, { fb: 0, nr: null }];
 
-        const peerComments = comments.filter(c => c.user.account_id !== pr.author.account_id);
-        const count = peerComments.filter(c => !c.is_resolved).length;
-        return [pr.id, count];
+        const myAccountId = me?.account_id?.toLowerCase();
+        const myNickname = me?.nickname?.toLowerCase();
+
+        const isMe = (u: BitbucketUser) => {
+          if (myAccountId && u.account_id?.toLowerCase() === myAccountId) return true;
+          if (myNickname && u.nickname?.toLowerCase() === myNickname) return true;
+
+          // Fallback logic
+          const config = getBitbucketConfig();
+          const myUsername = config.BITBUCKET_USERNAME?.toLowerCase().trim();
+          const myHandle = myUsername?.includes("@") ? myUsername.split("@")[0] : myUsername;
+          const nick = u.nickname?.toLowerCase().trim();
+          const display = u.display_name?.toLowerCase().trim();
+          const account = u.account_id?.toLowerCase().trim();
+
+          return (
+            nick === myUsername ||
+            nick === myHandle ||
+            display === myUsername ||
+            display === myHandle ||
+            (myUsername && display?.includes(myUsername)) ||
+            (myHandle && display?.includes(myHandle)) ||
+            account === myUsername ||
+            account === myHandle
+          );
+        };
+
+        // Feedbacks: Comments NOT by me
+        const peerComments = comments.filter(c => !isMe(c.user));
+
+        // Not Replied: Peer comments that are unresolved AND have no reply from me
+        const nrCount = peerComments.filter(peerComment => {
+          if (peerComment.is_resolved) return false;
+
+          // Check if I have replied to this specific comment
+          const hasMyReply = comments.some(c => {
+            return isMe(c.user) && c.parent?.id === peerComment.id;
+          });
+
+          // Also check if any child of this comment is by me? 
+          // (Bitbucket threading can be multiple levels but standard is parent/child)
+          return !hasMyReply;
+        }).length;
+
+        return [pr.id, { fb: peerComments.length, nr: nrCount }];
       })
-      .filter((entry): entry is [number, number | null] => entry !== null)
-  );
+      .filter((entry): entry is [number, { fb: number; nr: number | null }] => entry !== null)
+  ) as Record<number, { fb: number; nr: number | null }>;
 
   const sortedPrs = [...filteredPrs].sort((a, b) => {
     const timeA = new Date(a.created_on).getTime();
@@ -244,7 +292,7 @@ const PRViewContent: React.FC<PRViewProps> = ({ showAll = false }) => {
             prs={sortedPrs}
             selectedIndex={selectedIndex}
             showMeColumn={showAll}
-            unresolvedCounts={unresolvedCounts}
+            metrics={prMetrics}
           />
         </Box>
 

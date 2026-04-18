@@ -2,10 +2,13 @@ import React from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import { useQuery } from "@tanstack/react-query";
+import { getBitbucketConfig } from "../config";
 import {
   type BitbucketPR,
+  type BitbucketUser,
   fetchPRActivity,
   fetchPRComments,
+  fetchMe,
   calculateVelocity
 } from "../bitbucket";
 
@@ -37,12 +40,50 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
     queryFn: () => fetchPRComments(pr.id),
   });
 
+  const { data: me } = useQuery({
+    queryKey: ["me"],
+    queryFn: fetchMe,
+    staleTime: 1000 * 60 * 60,
+  });
+
   const velocity = activity ? calculateVelocity(pr, activity) : null;
-  const commentCount = pr.comment_count || 0;
+  const myAccountId = me?.account_id?.toLowerCase();
+  const myNickname = me?.nickname?.toLowerCase();
+
+  const isMe = (u: BitbucketUser) => {
+    if (myAccountId && u.account_id?.toLowerCase() === myAccountId) return true;
+    if (myNickname && u.nickname?.toLowerCase() === myNickname) return true;
+
+    // Fallback logic
+    const config = getBitbucketConfig();
+    const myUsername = config.BITBUCKET_USERNAME?.toLowerCase().trim();
+    const myHandle = myUsername?.includes("@") ? myUsername.split("@")[0] : myUsername;
+    const nick = u.nickname?.toLowerCase().trim();
+    const display = u.display_name?.toLowerCase().trim();
+    const account = u.account_id?.toLowerCase().trim();
+
+    return (
+      nick === myUsername ||
+      nick === myHandle ||
+      display === myUsername ||
+      display === myHandle ||
+      (myUsername && display?.includes(myUsername)) ||
+      (myHandle && display?.includes(myHandle)) ||
+      account === myUsername ||
+      account === myHandle
+    );
+  };
   
-  const peerComments = comments?.filter(c => c.user.account_id !== pr.author.account_id) || [];
-  const resolvedCount = peerComments.filter(c => c.is_resolved).length;
-  const unresolvedCount = peerComments.filter(c => !c.is_resolved).length;
+  const myPeerComments = comments?.filter(c => !isMe(c.user)) || [];
+
+  const resolvedCount = myPeerComments.filter(c => c.is_resolved).length;
+  const nrCount = myPeerComments.filter(peerComment => {
+    if (peerComment.is_resolved) return false;
+    const hasMyReply = (comments || []).some(c => {
+      return isMe(c.user) && c.parent?.id === peerComment.id;
+    });
+    return !hasMyReply;
+  }).length;
 
   return (
     <Box flexDirection="column" paddingX={2} width={50} minHeight={20} borderStyle="single" borderColor="cyan">
@@ -82,14 +123,14 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
           </Text>
         </Box>
         <Box paddingLeft={1}>
-          <Text color="dim">Unresolved: </Text>
-          <Text color={unresolvedCount > 0 ? "red" : "dim"}>
-            {unresolvedCount} items
+          <Text color="dim">Not Replied: </Text>
+          <Text color={nrCount > 0 ? "red" : "dim"}>
+            {nrCount} items
           </Text>
         </Box>
         <Box paddingLeft={1}>
-          <Text color="dim">Total Comments: </Text>
-          <Text color="magenta">{commentCount}</Text>
+          <Text color="dim">Total Feedbacks: </Text>
+          <Text color="magenta">{myPeerComments.length}</Text>
         </Box>
       </Box>
 
