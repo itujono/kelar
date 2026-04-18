@@ -64,14 +64,14 @@ export const LogTable: React.FC<LogTableProps> = ({
   }));
 
   return (
-    <>
+    <Box flexDirection="column">
       <Table
         data={data}
         columns={["Date", "Identifier", "Label", "Type", "Time"]}
         columnWidths={{
           Date: 10,
           Identifier: 30,
-          Label: 120,
+          Label: 80,
           Type: 12,
           Time: 10
         }}
@@ -133,6 +133,6 @@ export const LogTable: React.FC<LogTableProps> = ({
           </Box>
         )}
       </Box>
-    </>
+    </Box>
   );
 };

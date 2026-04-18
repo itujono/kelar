@@ -182,6 +182,8 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     return differenceInCalendarDays(targetDate, now);
   }, [calculationDay]);
 
+  const activeLog = useMemo(() => sortedLogs[selectedIndex], [sortedLogs, selectedIndex]);
+
   const handleFilterChange = useCallback((val: string) => {
     const sanitized = val.replace(/^\/+/, "");
     setFilterQuery(sanitized);
@@ -300,7 +302,8 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     daysRemaining,
     handleFilterChange,
     sync,
-    targetHours,
-    calculationDay
+     targetHours,
+     calculationDay,
+     activeLog
   };
 }

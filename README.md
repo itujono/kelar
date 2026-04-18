@@ -70,12 +70,15 @@ kelar log new IMM-123 45m
 kelar log list month
 ```
 - Shows progress bars, deadline countdowns, and percentages.
-- Interactive Controls:
-    - **`↑/↓`**: Navigate logs.
-    - **`/`**: Real-time filtering.
+- Interactive Controls & Detail Pane:
+    - **Detail Pane**: Shows item-specific **Statistics** (Total Time for that ticket, Entry Count) and a **Recent History** list of all logs for that item.
+    - **`↑/↓`**: Navigate logs and update the detail pane in real-time.
+    - **`o`**: Instantly **Open** the selected Jira ticket in your browser.
+    - **`/`**: Real-time filtering with automatic result count.
     - **`p`**: Quickly switch period (**Today**, **This Week**, **This Month**).
     - **`g`**: **Generate** high-fidelity HTML report instantly.
     - **`s`**: Open **Sort Menu** (Newest, Oldest, Longest, Shortest).
+    - **`r`**: **Refetch** latest data and clear cache.
 
 #### Generating Reports
 ```bash
@@ -176,6 +179,11 @@ kelar tix list --peer
 - All worklogs and configuration (including your tokens) are stored in `~/.kelar/kelar.db`.
 - Data is stored outside the project folder, so you can safely push code without leaking secrets.
 - No data is shared outside of your machine and your designated Atlassian domains.
+
+### Browsing the Database
+Since Kelar uses a standard SQLite database, you can manually inspect or query your data using any SQLite-compatible tool:
+- **CLI**: `sqlite3 ~/.kelar/kelar.db`
+- **GUI**: [DB Browser for SQLite](https://sqlitebrowser.org/), [Beekeeper Studio](https://www.beekeeperstudio.io/), or [DBeaver](https://dbeaver.io/).
 
 ## Technical Details
 

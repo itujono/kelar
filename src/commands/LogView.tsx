@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { generateHtmlReport } from "../report";
 import { LogTable } from "../components/log/LogTable";
 import { LogControls } from "../components/log/LogControls";
+import { LogDetailPane } from "../components/log/LogDetailPane";
 import { useLogView, type PeriodType, type SortType } from "../hooks/useLogView";
 
 export { type PeriodType, type SortType };
@@ -107,16 +108,23 @@ export function LogView({ period = "day", sortBy = "newest", isGenerateMode = fa
         )}
       </Box>
 
-      <LogTable
-        logs={data.sortedLogs}
-        selectedIndex={data.selectedIndex}
-        period={data.currentPeriod}
-        targetHours={data.targetHours}
-        daysRemaining={data.daysRemaining}
-        totalMinutes={data.totalMinutesAll}
-        personalCount={data.personalCount}
-        isLoading={data.status === "SYNCING"}
-      />
+      <Box flexDirection="row" minHeight={20}>
+        <Box flexGrow={1} marginRight={2}>
+          <LogTable
+            logs={data.sortedLogs}
+            selectedIndex={data.selectedIndex}
+            period={data.currentPeriod}
+            targetHours={data.targetHours}
+            daysRemaining={data.daysRemaining}
+            totalMinutes={data.totalMinutesAll}
+            personalCount={data.personalCount}
+            isLoading={data.status === "SYNCING"}
+          />
+        </Box>
+        {data.status !== "SYNCING" && data.activeLog && (
+          <LogDetailPane log={data.activeLog} allLogs={data.logs} />
+        )}
+      </Box>
 
       <LogControls
         isSorting={data.isSorting}
