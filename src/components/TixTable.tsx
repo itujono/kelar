@@ -2,6 +2,7 @@ import React from "react";
 import { Box, Text } from "ink";
 import { formatRelativeTime } from "../utils";
 import { type JiraIssue } from "../jira";
+import { Table } from "./Table";
 
 interface TixTableProps {
   tickets: JiraIssue[];
@@ -46,17 +47,6 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
     updated: 14,
   };
 
-  const columns = [
-    { label: "ID", width: COL_WIDTHS.key },
-    { label: "Prio", width: COL_WIDTHS.priority },
-    { label: "Title", width: COL_WIDTHS.title },
-    { label: "Status", width: COL_WIDTHS.status },
-    { label: "Assignee", width: COL_WIDTHS.assignee },
-    { label: "Est", width: COL_WIDTHS.estimate },
-    { label: "Log", width: COL_WIDTHS.logged },
-    { label: "Created", width: COL_WIDTHS.created },
-    { label: "Updated", width: COL_WIDTHS.updated },
-  ];
 
   if (tickets.length === 0) {
     return (
@@ -66,7 +56,6 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
     );
   }
 
-  // Calculate stats
   const total = tickets.length;
   const todo = tickets.filter(t => t.fields.status.statusCategory.key === "new").length;
   const inReview = tickets.filter(t => t.fields.status.name.toLowerCase().includes("review")).length;
@@ -75,16 +64,20 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
     !t.fields.status.name.toLowerCase().includes("review")
   ).length;
 
-  // Zombie logic (simplified here, but typically checked in parent or detail pane)
   const isZombie = (t: JiraIssue) => {
+    const status = t.fields.status.name.toLowerCase();
+    const isIndeterminate = t.fields.status.statusCategory.key === "indeterminate";
+    const isWaiting = status.includes("review") || status.includes("qa") || status.includes("test");
+
+    if (!isIndeterminate || isWaiting) return false;
+
     const updated = new Date(t.fields.updated).getTime();
     const fortyEightHoursAgo = Date.now() - (48 * 60 * 60 * 1000);
     return updated < fortyEightHoursAgo;
   };
   const zombies = tickets.filter(isZombie).length;
 
-  // Calculate windowed view
-  const WINDOW_SIZE = 18; // Maximum number of tickets to show
+  const WINDOW_SIZE = 18;
   let start = 0;
   if (tickets.length > WINDOW_SIZE) {
     start = Math.max(0, selectedIndex - Math.floor(WINDOW_SIZE / 2));
@@ -95,94 +88,44 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
   const visibleTickets = tickets.slice(start, start + WINDOW_SIZE);
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="dim" flexGrow={1}>
-      {/* Header */}
-      <Box paddingX={1} marginBottom={0}>
-        {columns.map((col) => (
-          <Box key={col.label} width={col.width}>
-            <Text bold color="cyan">
-              {col.label}
-            </Text>
-          </Box>
-        ))}
-      </Box>
+    <>
+      <Table
+        data={visibleTickets.map(t => ({
+          key: t.key,
+          priority: t.fields.priority?.name || "None",
+          title: t.fields.summary,
+          status: t.fields.status.name,
+          assignee: t.fields.assignee?.displayName?.split(" ")[0] || "Unassigned",
+          estimate: formatSeconds(t.fields.timeoriginalestimate),
+          logged: formatSeconds(t.fields.timespent),
+          created: formatRelativeTime(new Date(t.fields.created)),
+          updated: formatRelativeTime(new Date(t.fields.updated)),
+          _raw: t
+        }))}
+        columns={["key", "priority", "title", "status", "assignee", "estimate", "logged", "created", "updated"]}
+        columnWidths={COL_WIDTHS}
+        compact
+        selectedIndex={selectedIndex - start}
+        renderCell={(col, val, row) => {
+          const t = row._raw as JiraIssue;
+          const isSelected = (selectedIndex - start) === visibleTickets.indexOf(t);
 
-      {/* Rows */}
-      {start > 0 && (
-        <Box paddingX={1}>
-          <Text color="dim">  ↑ {start} more tickets...</Text>
-        </Box>
-      )}
-
-      {visibleTickets.map((t, i) => {
-        const index = start + i;
-        const isSelected = index === selectedIndex;
-        const priority = t.fields.priority?.name || "None";
-        const assignee = t.fields.assignee?.displayName?.split(" ")[0] || "Unassigned";
-        const status = t.fields.status.name;
-        const statusCat = t.fields.status.statusCategory.key;
-        const created = new Date(t.fields.created);
-
-        return (
-          <Box
-            key={t.id}
-            paddingX={1}
-            backgroundColor={isSelected ? "white" : undefined}
-          >
-            <Box width={COL_WIDTHS.key}>
-              <Text color={isSelected ? "black" : "dim"}>{t.key}</Text>
-            </Box>
-            <Box width={COL_WIDTHS.priority}>
-              <Text color={isSelected ? "black" : getPriorityColor(priority)}>
-                {priority}
-              </Text>
-            </Box>
-            <Box width={COL_WIDTHS.title}>
-              <Text color={isSelected ? "black" : undefined} wrap="truncate-end">
-                {t.fields.summary}
-              </Text>
-            </Box>
-            <Box width={COL_WIDTHS.status}>
-              <Text color={isSelected ? "black" : getStatusColor(statusCat, status)}>
-                {status}
-              </Text>
-            </Box>
-            <Box width={COL_WIDTHS.assignee}>
-              <Text color={isSelected ? "black" : "yellow"}>
-                {assignee}
-              </Text>
-            </Box>
-            <Box width={COL_WIDTHS.estimate}>
-              <Text color={isSelected ? "black" : "dim"}>
-                {formatSeconds(t.fields.timeoriginalestimate)}
-              </Text>
-            </Box>
-            <Box width={COL_WIDTHS.logged}>
-              <Text color={isSelected ? "black" : "dim"}>
-                {formatSeconds(t.fields.timespent)}
-              </Text>
-            </Box>
-            <Box width={COL_WIDTHS.created}>
-              <Text color={isSelected ? "black" : "dim"}>
-                {formatRelativeTime(created)}
-              </Text>
-            </Box>
-            <Box width={COL_WIDTHS.updated}>
-              <Text color={isSelected ? "black" : "dim"}>
-                {formatRelativeTime(new Date(t.fields.updated))}
-              </Text>
-            </Box>
-          </Box>
-        );
-      })}
-
-      {start + WINDOW_SIZE < tickets.length && (
-        <Box paddingX={1}>
-          <Text color="dim">  ↓ {tickets.length - (start + WINDOW_SIZE)} more tickets...</Text>
-        </Box>
-      )}
-
-      {/* Stats Footer */}
+          if (col === "priority") {
+            return <Text color={isSelected ? "black" : getPriorityColor(val)}>{val}</Text>;
+          }
+          if (col === "status") {
+            return <Text color={isSelected ? "black" : getStatusColor(t.fields.status.statusCategory.key, val)}>{val}</Text>;
+          }
+          if (col === "assignee") {
+            return <Text color={isSelected ? "black" : "yellow"}>{val}</Text>;
+          }
+          if (isSelected) return val;
+          if (col === "key" || col === "estimate" || col === "logged" || col === "created" || col === "updated") {
+            return <Text color="dim">{val}</Text>;
+          }
+          return val;
+        }}
+      />
       <Box paddingX={1} marginTop={1} borderStyle="single" borderTop={true} borderBottom={false} borderLeft={false} borderRight={false} borderColor="dim">
         <Text color="dim">Total: </Text><Text bold>{total}</Text>
         <Text color="dim"> | To-Do: </Text><Text color="blue">{todo}</Text>
@@ -190,6 +133,6 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
         <Text color="dim"> | In Review: </Text><Text color="magenta">{inReview}</Text>
         <Text color="dim"> | Zombies: </Text><Text color="red">{zombies}</Text>
       </Box>
-    </Box>
+    </>
   );
 };

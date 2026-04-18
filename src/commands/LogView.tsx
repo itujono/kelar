@@ -346,6 +346,14 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "newe
           )}
           <Table
             data={data}
+            columns={["Date", "Identifier", "Label", "Type", "Time"]}
+            columnWidths={{
+              Date: 10,
+              Identifier: 40,
+              Label: 100,
+              Type: 12,
+              Time: 10
+            }}
             compact
             selectedIndex={selectedIndex - startIndex}
             renderCell={(col, val, row) => {
@@ -358,6 +366,13 @@ export const LogView: React.FC<LogViewProps> = ({ period = "day", sortBy = "newe
                     {val}
                   </Text>
                 );
+              }
+              if (isSelected) return val;
+              if (col === "Date" || col === "Identifier") {
+                return <Text color="dim">{val}</Text>;
+              }
+              if (col === "Time") {
+                return <Text color="yellow">{val}</Text>;
               }
               return val;
             }}

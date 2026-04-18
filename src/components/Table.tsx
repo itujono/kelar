@@ -4,31 +4,86 @@ import { Box, Text } from "ink";
 interface TableProps<T> {
   data: T[];
   columns?: (keyof T)[];
+  columnWidths?: Partial<Record<keyof T, number>>;
   compact?: boolean;
   selectedIndex?: number;
   renderCell?: (column: keyof T, value: any, row: T) => React.ReactNode;
 }
 
-export function Table<T extends Record<string, any>>({ data, columns, compact, selectedIndex, renderCell }: TableProps<T>) {
+export function Table<T extends Record<string, any>>({
+  data,
+  columns,
+  columnWidths,
+  compact,
+  selectedIndex,
+  renderCell
+}: TableProps<T>) {
   if (data.length === 0) return null;
 
   const allColumns = columns || (Object.keys(data[0] || {}) as (keyof T)[]);
 
-  // Calculate column widths (base content width)
-  const contentWidths = allColumns.map((col) => {
+  const colWidths = allColumns.map((col) => {
+    if (columnWidths && columnWidths[col]) {
+      return columnWidths[col] as number;
+    }
     const headerLen = String(col).length;
     const maxDataLen = data.reduce((max, row) => {
       const val = row[col];
       const len = val !== undefined ? String(val).length : 0;
       return Math.max(max, len);
     }, 0);
-    return Math.max(headerLen, maxDataLen);
+    return Math.max(headerLen, maxDataLen) + 2;
   });
 
-  // Column widths with 1-character padding on each side
-  const colWidths = contentWidths.map((w) => w + 2);
+  if (compact) {
+    return (
+      <Box flexDirection="column" borderStyle="round" borderColor="dim" flexGrow={1}>
+        <Box paddingX={1} marginBottom={0}>
+          {allColumns.map((col, i) => (
+            <Box key={String(col)} width={colWidths[i]} paddingRight={2}>
+              <Text bold color="cyan">
+                {String(col)}
+              </Text>
+            </Box>
+          ))}
+        </Box>
+        {data.map((row, rowIndex) => {
+          const isSelected = rowIndex === selectedIndex;
+          return (
+            <Box
+              key={rowIndex}
+              paddingX={1}
+              backgroundColor={isSelected ? "white" : undefined}
+            >
+              {allColumns.map((col, i) => (
+                <Box key={String(col)} width={colWidths[i]} paddingRight={2}>
+                  {renderCell ? (
+                    (() => {
+                      const cell = renderCell(col, row[col], row);
+                      if (typeof cell === "string" || typeof cell === "number") {
+                        return (
+                          <Text color={isSelected ? "black" : undefined} wrap="truncate-end">
+                            {cell}
+                          </Text>
+                        );
+                      }
+                      return cell;
+                    })()
+                  ) : (
+                    <Text color={isSelected ? "black" : undefined} wrap="truncate-end">
+                      {row[col] ?? ""}
+                    </Text>
+                  )}
+                </Box>
+              ))}
+            </Box>
+          );
+        })}
+      </Box>
+    );
+  }
 
-  // Helper to render horizontal lines with intersections
+  // Helper to render horizontal lines with intersections (for non-compact mode)
   const renderLine = (start: string, middle: string, end: string, line: string) => (
     <Box>
       <Text color="dim">{start}</Text>
@@ -44,10 +99,8 @@ export function Table<T extends Record<string, any>>({ data, columns, compact, s
 
   return (
     <Box flexDirection="column">
-      {/* Top Border */}
       {renderLine("┌", "┬", "┐", "─")}
 
-      {/* Header Row */}
       <Box>
         <Text color="dim">│</Text>
         {allColumns.map((col, i) => (
@@ -62,10 +115,8 @@ export function Table<T extends Record<string, any>>({ data, columns, compact, s
         ))}
       </Box>
 
-      {/* Header Separator */}
       {renderLine("├", "┼", "┤", "─")}
 
-      {/* Data Rows */}
       {data.map((row, rowIndex) => {
         const isSelected = rowIndex === selectedIndex;
         return (
@@ -78,9 +129,6 @@ export function Table<T extends Record<string, any>>({ data, columns, compact, s
                     <Box>
                       {renderCell ? (
                         <Box>
-                          {/* We wrap renderCell to ensure we can force its child Text to be black if needed */}
-                          {/* However, the renderCell itself might return a <Text> which won't inherit the color automatically if it sets its own */}
-                          {/* But most of our renderCells use the inherited color or we can fix them in the caller */}
                           <Text color={isSelected ? "black" : undefined}>
                             {renderCell(col, row[col], row)}
                           </Text>
@@ -96,13 +144,11 @@ export function Table<T extends Record<string, any>>({ data, columns, compact, s
                 </React.Fragment>
               ))}
             </Box>
-            {/* Internal Divider (between rows) */}
-            {(!compact && rowIndex < data.length - 1) ? renderLine("├", "┼", "┤", "─") : null}
+            {rowIndex < data.length - 1 ? renderLine("├", "┼", "┤", "─") : null}
           </React.Fragment>
         );
       })}
 
-      {/* Bottom Border */}
       {renderLine("└", "┴", "┘", "─")}
     </Box>
   );
