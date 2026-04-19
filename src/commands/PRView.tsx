@@ -83,6 +83,22 @@ export function PRView({ showAll = false, sortBy = "updated" as PRSortType }: PR
         {data.activePR && <PRDetailPane pr={data.activePR} />}
       </Box>
 
+      {data.summary && (
+        <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1} flexDirection="column">
+          <Box>
+            <Text bold>Summary: </Text>
+            <Text color="yellow">{data.summary.authoredCount}</Text>
+            <Text color="dim"> Authored | </Text>
+            <Text color="cyan">{data.summary.reviewerCount}</Text>
+            <Text color="dim"> Reviewing (</Text>
+            <Text color="red" bold>{data.summary.pendingReviewCount}</Text>
+            <Text color="dim"> pending) | </Text>
+            <Text color="magenta" bold>{data.summary.nrCount}</Text>
+            <Text color="dim"> NR Feedbacks</Text>
+          </Box>
+        </Box>
+      )}
+
       <PRControls
         isSorting={data.isSorting}
         sortOptions={data.sortOptions}

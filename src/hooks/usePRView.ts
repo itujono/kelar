@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useInput, useApp } from "ink";
 import { useQuery, useQueries } from "@tanstack/react-query";
-import { fetchPRs, fetchPRComments, type BitbucketUser } from "../bitbucket";
+import { fetchPRs, fetchPRComments, fetchMe, type BitbucketUser, type BitbucketPR } from "../bitbucket";
 import { queryClient } from "../queryClient";
 
 export type PRSortType = "newest" | "oldest" | "updated" | "oldest_updated";
@@ -22,6 +22,12 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
     { label: "Newest Created", value: "newest" },
     { label: "Oldest Created", value: "oldest" },
   ];
+
+  const { data: me } = useQuery({
+    queryKey: ["bitbucket", "me"],
+    queryFn: fetchMe,
+    staleTime: Infinity,
+  });
 
   const { data: prs, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["prs", isAllMode],
@@ -100,6 +106,42 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
       return 0;
     });
   }, [filteredPrs, sortBy]);
+
+  const summary = useMemo(() => {
+    if (!prs || !me) return null;
+
+    const authored = prs.filter(pr => pr.author.account_id === me.account_id || pr.author.uuid === me.uuid);
+
+    const reviewerPrs = prs.filter(pr =>
+      pr.participants?.some(p =>
+        p.role === "REVIEWER" && (p.user.account_id === me.account_id || p.user.uuid === me.uuid)
+      )
+    );
+
+    const pendingReview = reviewerPrs.filter(pr =>
+      pr.participants?.some(p =>
+        (p.user.account_id === me.account_id || p.user.uuid === me.uuid) &&
+        p.role === "REVIEWER" &&
+        !p.approved &&
+        p.state !== "changes_requested"
+      )
+    );
+
+    let totalNR = 0;
+    authored.forEach(pr => {
+      const metric = prMetrics[pr.id];
+      if (metric && metric.nr) {
+        totalNR += metric.nr;
+      }
+    });
+
+    return {
+      authoredCount: authored.length,
+      reviewerCount: reviewerPrs.length,
+      pendingReviewCount: pendingReview.length,
+      nrCount: totalNR
+    };
+  }, [prs, me, prMetrics]);
 
   const activePR = sortedPrs[selectedIndex];
 
@@ -215,6 +257,7 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
     error,
     sortedPrs,
     prMetrics,
+    summary,
     activePR,
     handleFilterChange,
     refetch: () => {
