@@ -1,4 +1,3 @@
-import React from "react";
 import { Box, Text } from "ink";
 import { format } from "date-fns";
 import { type LogDbRow } from "../../db";
@@ -66,26 +65,54 @@ export const LogDetailPane: React.FC<LogDetailPaneProps> = ({ log, allLogs }) =>
         <Box marginBottom={1}>
           <Text bold color="white">RECENT HISTORY</Text>
         </Box>
-        {identifierLogs.slice(0, 10).map((l) => {
-          const isCurrent = l.id === log.id;
-          return (
-            <Box key={l.id}>
-              <Box width={8}>
-                <Text color={isCurrent ? "cyan" : "dim"}>
-                  {format(new Date(l.created_at), "dd MMM")}:{" "}
-                </Text>
-              </Box>
-              <Box width={10}>
-                <Text color={isCurrent ? "green" : "yellow"} bold={isCurrent}>
-                  {formatMinutes(l.minutes)}
-                </Text>
-              </Box>
-            </Box>
-          );
-        })}
-        {identifierLogs.length > 10 && (
+
+        <Box flexDirection="row">
+          {/* Left Column */}
+          <Box flexDirection="column" marginRight={2}>
+            {identifierLogs.slice(0, 10).map((l) => {
+              const isCurrent = l.id === log.id;
+              return (
+                <Box key={l.id}>
+                  <Box width={7}>
+                    <Text color={isCurrent ? "cyan" : "dim"}>
+                      {format(new Date(l.created_at), "dd MMM")}
+                    </Text>
+                  </Box>
+                  <Box width={9}>
+                    <Text color={isCurrent ? "green" : "yellow"} bold={isCurrent}>
+                      {formatMinutes(l.minutes)}
+                    </Text>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+
+          {/* Right Column */}
+          <Box flexDirection="column">
+            {identifierLogs.slice(10, 20).map((l) => {
+              const isCurrent = l.id === log.id;
+              return (
+                <Box key={l.id}>
+                  <Box width={7}>
+                    <Text color={isCurrent ? "cyan" : "dim"}>
+                      {format(new Date(l.created_at), "dd MMM")}
+                    </Text>
+                  </Box>
+                  <Box width={9}>
+                    <Text color={isCurrent ? "green" : "yellow"} bold={isCurrent}>
+                      {formatMinutes(l.minutes)}
+                    </Text>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </Box>
+
+        {identifierLogs.length > 14 && (
           <Box marginTop={0}>
-            <Text color="dim" italic>  ... and {identifierLogs.length - 10} more entries</Text>
+            <Text color="dim" italic> ... and {identifierLogs.length - 14} more entries</Text>
           </Box>
         )}
       </Box>
