@@ -130,7 +130,7 @@ pr
   .command("list")
   .description("List open pull requests")
   .option("-a, --all", "Show all pull requests in the repository", false)
-  .option("-s, --sort <type>", "Sort by (newest, oldest, longest, shortest)", "newest")
+  .option("-s, --sort <type>", "Sort by (updated, oldest_updated, newest, oldest)", "updated")
   .action(async (options) => {
     const { waitUntilExit } = render(
       <GlobalProviders>

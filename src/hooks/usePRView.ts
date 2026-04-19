@@ -6,7 +6,7 @@ import { queryClient } from "../queryClient";
 
 export type PRSortType = "newest" | "oldest" | "updated" | "oldest_updated";
 
-export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "newest") {
+export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "updated") {
   const { exit } = useApp();
   const [isAllMode, setIsAllMode] = useState(initialShowAll);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -17,10 +17,10 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
   const [sortIndex, setSortIndex] = useState(0);
 
   const sortOptions: { label: string; value: PRSortType }[] = [
-    { label: "Newest Created", value: "newest" },
-    { label: "Oldest Created", value: "oldest" },
     { label: "Newest Updated", value: "updated" },
     { label: "Oldest Updated", value: "oldest_updated" },
+    { label: "Newest Created", value: "newest" },
+    { label: "Oldest Created", value: "oldest" },
   ];
 
   const { data: prs, isLoading, isError, error, refetch } = useQuery({
