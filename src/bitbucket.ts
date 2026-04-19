@@ -1,5 +1,4 @@
 import { getBitbucketConfig } from "./config";
-import { queryClient } from "./queryClient";
 
 export interface BitbucketUser {
   display_name: string;
@@ -38,7 +37,6 @@ export interface BitbucketPR {
     state: "null" | "approved" | "changes_requested";
   }[];
 }
-
 
 export interface BitbucketActivity {
   comment?: {
@@ -97,8 +95,6 @@ const getAuthHeader = () => {
   return `Basic ${credentials}`;
 };
 
-
-
 const getBaseUrl = () => {
   const { BITBUCKET_WORKSPACE, BITBUCKET_REPO_SLUG } = getBitbucketConfig();
   if (!BITBUCKET_WORKSPACE || !BITBUCKET_REPO_SLUG) {
@@ -111,7 +107,7 @@ export const fetchPRs = async (all = false): Promise<BitbucketPR[]> => {
   const { BITBUCKET_USERNAME } = getBitbucketConfig();
   const baseUrl = getBaseUrl();
   let allPRs: BitbucketPR[] = [];
-  
+
   const initialUrl = new URL(`${baseUrl}/pullrequests`);
   let query = 'state="OPEN"';
   if (!all && BITBUCKET_USERNAME) {

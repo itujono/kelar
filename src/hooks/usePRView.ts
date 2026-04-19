@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useInput, useApp } from "ink";
 import { useQuery, useQueries } from "@tanstack/react-query";
-import { fetchPRs, fetchPRActivity, fetchPRComments, calculateVelocity, type BitbucketUser, type BitbucketActivity } from "../bitbucket";
+import { fetchPRs, fetchPRComments, type BitbucketUser } from "../bitbucket";
 import { queryClient } from "../queryClient";
 
 export type PRSortType = "newest" | "oldest" | "updated" | "oldest_updated";
