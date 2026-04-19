@@ -77,16 +77,22 @@ export const PRTable: React.FC<PRTableProps> = ({
           myReviewColor = "yellow";
         } else if (myParticipant) {
           const isApproved = myParticipant.approved || myParticipant.state === "approved";
+          const isChangesRequested = myParticipant.state === "changes_requested";
+
           if (isApproved) {
             myReviewIcon = "✓";
             myReviewColor = "green";
+          } else if (isChangesRequested) {
+            myReviewIcon = "✗";
+            myReviewColor = "red";
           } else {
             myReviewIcon = "-";
-            myReviewColor = "red";
+            myReviewColor = "yellow";
           }
         }
 
         const approvals = pr.participants?.filter(p => p.approved || p.state === "approved").length || 0;
+        const changesRequested = pr.participants?.some(p => p.state === "changes_requested");
         const m = metrics[pr.id] || { fb: 0, nr: 0 };
 
         return {
@@ -98,8 +104,8 @@ export const PRTable: React.FC<PRTableProps> = ({
           nr: m.nr ?? 0,
           created: formatRelativeTime(new Date(pr.created_on)),
           updated: formatRelativeTime(new Date(pr.updated_on)),
-          status: approvals > 0 ? `✓ ${approvals}` : `○ ${approvals}`,
-          _raw: { pr, myReviewColor, approvals }
+          status: changesRequested ? "✗ Req" : (approvals > 0 ? `✓ ${approvals}` : `○ ${approvals}`),
+          _raw: { pr, myReviewColor, approvals, changesRequested }
         };
       })}
       columns={[
@@ -117,7 +123,7 @@ export const PRTable: React.FC<PRTableProps> = ({
         <Text color="dim italic">  ↓ {total - (startIndex + WINDOW_SIZE)} more pull requests...</Text>
       ) : undefined}
       renderCell={(col, val, row) => {
-        const { pr, myReviewColor, approvals } = row._raw;
+        const { pr, myReviewColor, approvals, changesRequested } = row._raw;
         const isSelected = prs.indexOf(pr) === selectedIndex;
 
         if (col === "id" || col === "created" || col === "updated") {
@@ -136,7 +142,9 @@ export const PRTable: React.FC<PRTableProps> = ({
           return <Text color={isSelected ? "black" : (val > 0 ? "red" : "dim")}>{val}</Text>;
         }
         if (col === "status") {
-          const statusColor = isSelected ? "black" : (approvals > 0 ? "green" : "dim");
+          const statusColor = isSelected 
+            ? "black" 
+            : (changesRequested ? "red" : (approvals > 0 ? "green" : "dim"));
           return <Text color={statusColor}>{val}</Text>;
         }
         return val;

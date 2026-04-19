@@ -104,13 +104,20 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
 
       <Box flexDirection="column" marginTop={1}>
         <Text bold color="yellow">Reviewers</Text>
-        {pr.participants?.filter(p => p.role === "REVIEWER").map(reviewer => (
-          <Box key={reviewer.user.account_id} paddingLeft={1}>
-            <Text color={reviewer.approved ? "green" : "dim"}>
-              {reviewer.approved ? "✓" : "○"} {reviewer.user.display_name}
-            </Text>
-          </Box>
-        ))}
+        {pr.participants?.filter(p => p.role === "REVIEWER").map(reviewer => {
+          const isApproved = reviewer.approved || reviewer.state === "approved";
+          const isChangesRequested = reviewer.state === "changes_requested";
+          const reviewerColor = isApproved ? "green" : (isChangesRequested ? "red" : "dim");
+          const reviewerIcon = isApproved ? "✓" : (isChangesRequested ? "✗" : "○");
+
+          return (
+            <Box key={reviewer.user.account_id} paddingLeft={1}>
+              <Text color={reviewerColor}>
+                {reviewerIcon} {reviewer.user.display_name}
+              </Text>
+            </Box>
+          );
+        })}
       </Box>
 
       <Box flexDirection="column" marginTop={1}>

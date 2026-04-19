@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Text, Box, useApp } from "ink";
 import Spinner from "ink-spinner";
 import TextInput from "ink-text-input";
@@ -55,12 +55,10 @@ export function LogNew({ identifier, time, initialComment }: Props) {
         if (issue.fields.assignee?.accountId !== myAccountId) {
           setWarning(`Warning: This ticket is assigned to ${issue.fields.assignee?.displayName || "someone else"}.`);
         }
-        // Use provided comment, or default to empty string if not provided
         if (!worklogComment) {
           worklogComment = "";
         }
       } else {
-        // Personal log
         if (!config.PERSONAL_TICKET_ID) {
           throw new Error("PERSONAL_TICKET_ID not set in config.");
         }
