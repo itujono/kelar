@@ -1,6 +1,6 @@
 # Kelar CLI 🍗
 
-**Kelar** is a fast, terminal-based Jira and Bitbucket manager built with **Bun**, **TypeScript**, and **Ink**. It provides a premium TUI (Terminal User Interface) to manage your productivity, tracking worklogs and pull request health with real-time analytics.
+**Kelar** is a terminal-based Jira and Bitbucket manager built with **Bun**, **TypeScript**, and **Ink**. It provides a TUI (Terminal User Interface) to manage your productivity, tracking worklogs, and pull request health with real-time analytics.
 
 ## Features
 
@@ -100,6 +100,7 @@ kelar pr list --all
 
 #### Table View
 - All list views (Logs, Tickets, PRs) utilize a standardized, high-fidelity `Table` component with rounded borders and integrated metadata headers/footers.
+- **Windowed Navigation**: Tables intelligently limit visible items (e.g., 18 for entries, 10 for user lists) with dynamic `↑/↓` indicators in the header/footer to ensure the UI remains focused and snappy.
 - Tables intelligently scale by shrinking flexible text columns (like `Title` or `Label`) while preserving vital fixed-width columns (`ID`, `Status`, `Prio`), ensuring a perfect fit across different terminal widths and side panes.
 - Browse PRs with relative timestamps (`~ 2 hours`), approval counts, and refined metrics:
     - **`FB`**: Total Feedbacks (comments made by peers).
@@ -112,11 +113,12 @@ kelar pr list --all
 - Interactive Controls:
     - **`↑/↓`**: Navigate the list.
     - **`/`**: Enter **Filter Mode** to search by Title, Branch, or ID.
-    - **`s`**: Open **Sort Menu** (Newest, Oldest, Lead Time, Pickup Latency).
+    - **`s`**: Open **Sort Menu** (Newest Updated, Oldest Updated, Newest, Oldest).
     - **`m`**: Toggle between your PRs (**MINE**) and **ALL** repository PRs.
     - **`o`**: Instantly **Open** the PR in your default browser.
     - **`c`**: **Copy** the source branch name to your clipboard.
-    - **`r`**: **Refetch** latest data from Bitbucket.
+    - **`r`**: **Refetch** latest data from Bitbucket (invalidates list and detail cache).
+    - **`Esc`**: Smart escape — first clear filter text, then exit filter mode.
 
 ### Tickets (Jira Engineering Intelligence)
 

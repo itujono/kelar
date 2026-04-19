@@ -4,7 +4,7 @@ import { useQuery, useQueries } from "@tanstack/react-query";
 import { fetchPRs, fetchPRActivity, fetchPRComments, calculateVelocity, type BitbucketUser, type BitbucketActivity } from "../bitbucket";
 import { queryClient } from "../queryClient";
 
-export type PRSortType = "newest" | "oldest" | "longest" | "shortest";
+export type PRSortType = "newest" | "oldest" | "updated" | "oldest_updated";
 
 export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "newest") {
   const { exit } = useApp();
@@ -17,10 +17,10 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
   const [sortIndex, setSortIndex] = useState(0);
 
   const sortOptions: { label: string; value: PRSortType }[] = [
-    { label: "Newest", value: "newest" },
-    { label: "Oldest", value: "oldest" },
-    { label: "Longest Lead Time", value: "longest" },
-    { label: "Shortest Pickup Latency", value: "shortest" },
+    { label: "Newest Created", value: "newest" },
+    { label: "Oldest Created", value: "oldest" },
+    { label: "Newest Updated", value: "updated" },
+    { label: "Oldest Updated", value: "oldest_updated" },
   ];
 
   const { data: prs, isLoading, isError, error, refetch } = useQuery({
@@ -40,15 +40,6 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
     }) || [];
   }, [prs, filterQuery]);
 
-  // Parallel activity fetching for velocity-based sorting
-  useQueries({
-    queries: filteredPrs.map(pr => ({
-      queryKey: ["pr", pr.id, "activity"],
-      queryFn: () => fetchPRActivity(pr.id),
-      enabled: sortBy === "shortest" || isSorting, // Prefetch when in sort mode
-      staleTime: 1000 * 60 * 10,
-    }))
-  });
 
   const commentsQueries = useQueries({
     queries: filteredPrs.map(pr => ({
@@ -98,17 +89,13 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
     return [...filteredPrs].sort((a, b) => {
       const timeA = new Date(a.created_on).getTime();
       const timeB = new Date(b.created_on).getTime();
+      const updateA = new Date(a.updated_on).getTime();
+      const updateB = new Date(b.updated_on).getTime();
 
       if (sortBy === "newest") return timeB - timeA;
-      if (sortBy === "oldest" || sortBy === "longest") return timeA - timeB;
-
-      if (sortBy === "shortest") {
-        const actA = queryClient.getQueryData<BitbucketActivity[]>(["pr", a.id, "activity"]);
-        const actB = queryClient.getQueryData<BitbucketActivity[]>(["pr", b.id, "activity"]);
-        const velA = actA ? calculateVelocity(a, actA).pickupLatency : Infinity;
-        const velB = actB ? calculateVelocity(b, actB).pickupLatency : Infinity;
-        return (velA ?? Infinity) - (velB ?? Infinity);
-      }
+      if (sortBy === "oldest") return timeA - timeB;
+      if (sortBy === "updated") return updateB - updateA;
+      if (sortBy === "oldest_updated") return updateA - updateB;
 
       return 0;
     });
@@ -163,8 +150,11 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
 
     if (key.escape) {
       if (isFiltering) {
-        setIsFiltering(false);
-        setFilterQuery("");
+        if (filterQuery.length > 0) {
+          setFilterQuery("");
+        } else {
+          setIsFiltering(false);
+        }
         setSelectedIndex(0);
       }
       return;
@@ -185,7 +175,8 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
     }
 
     if (input === "r") {
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ["prs"] });
+      queryClient.invalidateQueries({ queryKey: ["pr"] });
     }
 
     if (input === "o" && activePR) {
@@ -226,6 +217,9 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
     prMetrics,
     activePR,
     handleFilterChange,
-    refetch,
+    refetch: () => {
+      queryClient.invalidateQueries({ queryKey: ["prs"] });
+      queryClient.invalidateQueries({ queryKey: ["pr"] });
+    },
   };
 }

@@ -13,12 +13,12 @@ interface PRViewProps {
   sortBy?: PRSortType;
 }
 
-export function PRView({ showAll = false, sortBy = "newest" }: PRViewProps) {
-  const { 
-    setIsFiltering, 
-    handleFilterChange, 
-    isAllMode, 
-    ...data 
+export function PRView({ showAll = false, sortBy = "updated" as PRSortType }: PRViewProps) {
+  const {
+    setIsFiltering,
+    handleFilterChange,
+    isAllMode,
+    ...data
   } = usePRView(showAll, sortBy);
 
   if (!isBitbucketConfigValid().valid) {
@@ -80,7 +80,6 @@ export function PRView({ showAll = false, sortBy = "newest" }: PRViewProps) {
             metrics={data.prMetrics}
           />
         </Box>
-
         {data.activePR && <PRDetailPane pr={data.activePR} />}
       </Box>
 

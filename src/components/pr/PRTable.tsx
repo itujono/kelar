@@ -42,10 +42,14 @@ export const PRTable: React.FC<PRTableProps> = ({
     status: 8,
   };
 
-  return (
+  const WINDOW_SIZE = 18;
+  const total = prs.length;
+  const startIndex = Math.max(0, Math.min(selectedIndex - Math.floor(WINDOW_SIZE / 2), Math.max(0, total - WINDOW_SIZE)));
+  const visiblePrs = prs.slice(startIndex, startIndex + WINDOW_SIZE);
 
+  return (
     <Table
-      data={prs.map(pr => {
+      data={visiblePrs.map(pr => {
         const authorName = pr.author.display_name.split(" ")[0] || "Unknown";
 
         // My review status
@@ -105,7 +109,13 @@ export const PRTable: React.FC<PRTableProps> = ({
       ] as any}
       columnWidths={COL_WIDTHS}
       compact
-      selectedIndex={selectedIndex}
+      selectedIndex={selectedIndex - startIndex}
+      header={startIndex > 0 ? (
+        <Text color="dim italic">  ↑ {startIndex} more pull requests...</Text>
+      ) : undefined}
+      footer={startIndex + WINDOW_SIZE < total ? (
+        <Text color="dim italic">  ↓ {total - (startIndex + WINDOW_SIZE)} more pull requests...</Text>
+      ) : undefined}
       renderCell={(col, val, row) => {
         const { pr, myReviewColor, approvals } = row._raw;
         const isSelected = prs.indexOf(pr) === selectedIndex;

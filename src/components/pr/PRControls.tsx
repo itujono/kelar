@@ -67,7 +67,7 @@ export const PRControls: React.FC<PRControlsProps> = ({
             <Text bold color="cyan">Enter</Text>
             <Text color="dim"> to keep | </Text>
             <Text bold color="cyan">Esc</Text>
-            <Text color="dim"> to reset</Text>
+            <Text color="dim"> to {filterQuery.length > 0 ? "reset" : "quit filter"}</Text>
           </Box>
         </Box>
       ) : (

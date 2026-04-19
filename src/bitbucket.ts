@@ -110,30 +110,34 @@ const getBaseUrl = () => {
 export const fetchPRs = async (all = false): Promise<BitbucketPR[]> => {
   const { BITBUCKET_USERNAME } = getBitbucketConfig();
   const baseUrl = getBaseUrl();
-  const url = new URL(`${baseUrl}/pullrequests`);
-
-  // Use 'q' parameter for all filtering to ensure state and author checks are combined correctly
+  let allPRs: BitbucketPR[] = [];
+  
+  const initialUrl = new URL(`${baseUrl}/pullrequests`);
   let query = 'state="OPEN"';
   if (!all && BITBUCKET_USERNAME) {
     query = `(${query}) AND (author.nickname="${BITBUCKET_USERNAME}" OR author.username="${BITBUCKET_USERNAME}")`;
   }
+  initialUrl.searchParams.append("q", query);
+  initialUrl.searchParams.append("fields", "values.*,values.participants,next");
 
-  url.searchParams.append("q", query);
-  url.searchParams.append("fields", "values.*,values.participants");
+  let nextUrl: string | null = initialUrl.toString();
 
-  const response = await fetch(url.toString(), {
-    headers: { "Authorization": getAuthHeader() },
-  });
+  while (nextUrl) {
+    const response = await fetch(nextUrl, {
+      headers: { "Authorization": getAuthHeader() },
+    });
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch PRs: ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch PRs: ${response.statusText}`);
+    }
+
+    const data = await response.json() as { values?: BitbucketPR[]; next?: string };
+    allPRs = [...allPRs, ...(data.values || [])];
+    nextUrl = data.next || null;
   }
 
-  const data = await response.json() as { values?: BitbucketPR[] };
-  const values = data.values || [];
-
   // Client-side safety filter
-  return values.filter(pr => pr.state === "OPEN");
+  return allPRs.filter(pr => pr.state === "OPEN");
 };
 
 
