@@ -38,7 +38,7 @@ export function PRView({ showAll = false, sortBy = "updated" as PRSortType }: PR
     return (
       <Box padding={1}>
         <Spinner type="dots" />
-        <Text italic> Loading pull requests...</Text>
+        <Text italic>Loading pull requests...</Text>
       </Box>
     );
   }
@@ -70,7 +70,6 @@ export function PRView({ showAll = false, sortBy = "updated" as PRSortType }: PR
         <Text color="dim"> | sorted by: </Text>
         <Text color="yellow">{data.sortBy}</Text>
       </Box>
-
       <Box flexDirection="row" minHeight={20}>
         <Box flexGrow={1} marginRight={2}>
           <PRTable
@@ -82,7 +81,6 @@ export function PRView({ showAll = false, sortBy = "updated" as PRSortType }: PR
         </Box>
         {data.activePR && <PRDetailPane pr={data.activePR} />}
       </Box>
-
       {data.summary && (
         <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1} flexDirection="column">
           <Box>
@@ -98,7 +96,6 @@ export function PRView({ showAll = false, sortBy = "updated" as PRSortType }: PR
           </Box>
         </Box>
       )}
-
       <PRControls
         isSorting={data.isSorting}
         sortOptions={data.sortOptions}

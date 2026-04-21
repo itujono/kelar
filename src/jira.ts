@@ -211,8 +211,8 @@ Response: ${errorText}`);
 /**
  * Searches for issues using JQL
  */
-export async function searchIssues(jql: string): Promise<JiraIssue[]> {
-  const CACHE_KEY = `TIX_CACHE_V2_${Buffer.from(jql).toString("base64").substring(0, 50)}`;
+export async function searchIssues(jql: string, maxResults: number = 100): Promise<JiraIssue[]> {
+  const CACHE_KEY = `TIX_CACHE_V3_${Buffer.from(jql).toString("base64").substring(0, 50)}_${maxResults}`;
   const CACHE_TS_KEY = `${CACHE_KEY}_TS`;
   const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
@@ -237,6 +237,7 @@ export async function searchIssues(jql: string): Promise<JiraIssue[]> {
     },
     body: JSON.stringify({
       jql,
+      maxResults,
       fields: [
         "summary",
         "assignee",
@@ -450,22 +451,35 @@ export async function fetchActivityCountToday(): Promise<number> {
  * Fetches all worklogs for a specific issue
  */
 export async function fetchIssueWorklogs(issueIdOrKey: string): Promise<JiraWorklog[]> {
-  const url = `${getBaseUrl()}/issue/${issueIdOrKey}/worklog`;
-  const response = await fetch(url, {
-    headers: {
-      Authorization: getAuthHeader(),
-      Accept: "application/json",
-      "User-Agent": "KelarCLI/1.0.0",
-    },
-  });
+  let allWorklogs: JiraWorklog[] = [];
+  let startAt = 0;
+  const maxResults = 100;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch worklogs for ${issueIdOrKey}: ${response.status} ${errorText}`);
+  while (true) {
+    const url = `${getBaseUrl()}/issue/${issueIdOrKey}/worklog?startAt=${startAt}&maxResults=${maxResults}`;
+    const response = await fetch(url, {
+      headers: {
+        Authorization: getAuthHeader(),
+        Accept: "application/json",
+        "User-Agent": "KelarCLI/1.0.0",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch worklogs for ${issueIdOrKey}: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json() as { worklogs: JiraWorklog[], total: number };
+    allWorklogs = [...allWorklogs, ...data.worklogs];
+
+    if (allWorklogs.length >= data.total || data.worklogs.length < maxResults) {
+      break;
+    }
+    startAt += maxResults;
   }
 
-  const data = await response.json() as { worklogs: JiraWorklog[] };
-  return data.worklogs;
+  return allWorklogs;
 }
 
 /**

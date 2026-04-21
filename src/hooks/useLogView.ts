@@ -89,13 +89,26 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       setStatus("SYNCING");
       const jqlDate = format(sinceDate, "yyyy-MM-dd");
       const jql = `worklogAuthor = currentUser() AND worklogDate >= "${jqlDate}"`;
-      const issues = await searchIssues(jql);
+
+      const issues = await searchIssues(jql, 500);
 
       const myAccountId = config.JIRA_ACCOUNT_ID;
       const remoteLogs = [];
 
       for (const issue of issues) {
-        const worklogs = await fetchIssueWorklogs(issue.key);
+        let worklogs = issue.fields.worklog?.worklogs || [];
+        const totalWorklogs = issue.fields.worklog?.total || worklogs.length;
+        const maxResultsWorklogs = issue.fields.worklog?.maxResults || 20;
+
+        if (totalWorklogs > maxResultsWorklogs || worklogs.length === 0) {
+          try {
+            worklogs = await fetchIssueWorklogs(issue.key);
+          } catch (e) {
+            console.error(`Failed to fetch worklogs for ${issue.key}:`, e);
+            // Continue with whatever we have
+          }
+        }
+
         for (const wl of worklogs) {
           const wlDate = new Date(wl.started);
           if (wl.author.accountId === myAccountId && wlDate >= sinceDate) {
