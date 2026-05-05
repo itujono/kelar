@@ -7,7 +7,7 @@ interface TableProps<T> {
   columnWidths?: Partial<Record<keyof T, number>>;
   compact?: boolean;
   selectedIndex?: number;
-  renderCell?: (column: keyof T, value: any, row: T, rowIndex: number) => React.ReactNode;
+  renderCell?: <K extends keyof T>(column: K, value: T[K], row: T, rowIndex: number) => React.ReactNode;
   header?: React.ReactNode;
   footer?: React.ReactNode;
 }

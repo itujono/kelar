@@ -45,7 +45,7 @@ export function getBitbucketConfig() {
 }
 
 
-export function setAppConfig(key: ConfigKey, value: string) {
+export function setAppConfig(key: ConfigKey | BitbucketConfigKey, value: string) {
   dbOps.setConfig(key, value);
 }
 

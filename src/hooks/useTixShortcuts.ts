@@ -1,3 +1,4 @@
+import React from "react";
 import { useInput, useApp } from "ink";
 import { clearTixCache, type JiraIssue, type JiraTransition, type JiraUser } from "../jira";
 import { getAppConfig } from "../config";
@@ -61,7 +62,7 @@ export function useTixShortcuts({
   ...data
 }: TixShortcutParams) {
   const { exit } = useApp();
-  const config = getAppConfig();
+  const config = React.useMemo(() => getAppConfig(), []);
 
   useInput((input, key) => {
     const {

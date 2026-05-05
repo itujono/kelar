@@ -500,11 +500,17 @@ export async function fetchIssueWorklogs(issueIdOrKey: string): Promise<JiraWork
 /**
  * Fetches all worklogs for a user in a given date range across all issues
  */
-export async function fetchUserWorklogs(accountId: string, sinceDate: string): Promise<JiraWorklog[]> {
+export interface FetchWorklogsResult {
+  worklogs: JiraWorklog[];
+  warnings: string[];
+}
+
+export async function fetchUserWorklogs(accountId: string, sinceDate: string): Promise<FetchWorklogsResult> {
   const jql = `worklogAuthor = "${accountId}" AND worklogDate >= "${sinceDate.split("T")[0]}"`;
   const issues = await searchIssues(jql);
 
   const allWorklogs: JiraWorklog[] = [];
+  const warnings: string[] = [];
   const since = new Date(sinceDate);
 
   // Issues that might have more worklogs than the 20 returned by default in search
@@ -535,21 +541,26 @@ export async function fetchUserWorklogs(accountId: string, sinceDate: string): P
   }
 
   if (issuesToFetchMore.length > 0) {
-    // Fetch remaining worklogs in parallel
-    const extraWorklogResults = await Promise.all(
+    // Fetch remaining worklogs in parallel, catching per-issue failures
+    const extraWorklogResults = await Promise.allSettled(
       issuesToFetchMore.map(key => fetchIssueWorklogs(key))
     );
 
-    extraWorklogResults.forEach(worklogs => {
-      worklogs.forEach((wl: JiraWorklog) => {
-        const wlDate = new Date(wl.started);
-        // Only add if not already present (checking ID)
-        if (wl.author.accountId === accountId && wlDate >= since && !allWorklogs.find(existing => existing.id === wl.id)) {
-          allWorklogs.push(wl);
-        }
-      });
+    extraWorklogResults.forEach((result, i) => {
+      if (result.status === "fulfilled") {
+        result.value.forEach((wl: JiraWorklog) => {
+          const wlDate = new Date(wl.started);
+          // Only add if not already present (checking ID)
+          if (wl.author.accountId === accountId && wlDate >= since && !allWorklogs.find(existing => existing.id === wl.id)) {
+            allWorklogs.push(wl);
+          }
+        });
+      } else {
+        const issueKey = issuesToFetchMore[i];
+        warnings.push(`Failed to fetch worklogs for ${issueKey}: ${result.reason}`);
+      }
     });
   }
 
-  return allWorklogs;
+  return { worklogs: allWorklogs, warnings };
 }

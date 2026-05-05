@@ -67,11 +67,14 @@ export function useTixView(initialPeerMode: boolean) {
   const targetHours = parseInt(config.MONTHLY_TARGET_HOURS, 10) || DEFAULT_MONTHLY_TARGET_HOURS;
   const calculationDay = parseInt(config.LAST_CALCULATION_DAY, 10) || DEFAULT_CALCULATION_DAY;
 
-  const { data: monthlyLogs } = useQuery({
+  const { data: monthlyLogsResult } = useQuery({
     queryKey: ["monthlyLogs", accountId],
     queryFn: () => fetchUserWorklogs(accountId!, startOfMonth(new Date()).toISOString()),
     enabled: !!accountId && !isUserSelecting
   });
+
+  const monthlyLogs = monthlyLogsResult?.worklogs;
+  const worklogWarnings = monthlyLogsResult?.warnings ?? [];
 
   const totalMinutesAll = useMemo(() =>
     monthlyLogs?.reduce((sum, log) => sum + Math.round(log.timeSpentSeconds / 60), 0) || 0,
@@ -259,7 +262,8 @@ export function useTixView(initialPeerMode: boolean) {
     totalMinutesAll,
     daysRemaining,
     targetHours,
-    monthlyLogs,
+    monthlyLogs: monthlyLogsResult,
+    worklogWarnings,
     activeTicket,
     transitions,
     isLoadingTransitions,

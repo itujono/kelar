@@ -177,7 +177,7 @@ prConfig
   .action((key, value) => {
     const upperKey = key.toUpperCase() as BitbucketConfigKey;
     if (BITBUCKET_CONFIG_KEYS[upperKey]) {
-      setAppConfig(upperKey as any, value);
+      setAppConfig(upperKey, value);
       const { unmount } = render(
         <Box padding={1}>
           <Text color="green">✅ Updated Bitbucket {upperKey} successfully!</Text>

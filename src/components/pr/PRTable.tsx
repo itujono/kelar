@@ -1,9 +1,10 @@
+import React from "react";
 import { Box, Text } from "ink";
 import { type BitbucketPR, isBitbucketMe } from "../../bitbucket";
 import { getBitbucketConfig } from "../../config";
 import { formatRelativeTime } from "../../utils";
 import { Table } from "../Table";
-import React from "react";
+import { useWindowedSlice } from "../../hooks/useWindowedSlice";
 
 interface PRTableProps {
   prs: BitbucketPR[];
@@ -33,10 +34,7 @@ export const PRTable: React.FC<PRTableProps> = ({
     status: 8,
   };
 
-  const WINDOW_SIZE = 18;
-  const total = prs.length;
-  const startIndex = Math.max(0, Math.min(selectedIndex - Math.floor(WINDOW_SIZE / 2), Math.max(0, total - WINDOW_SIZE)));
-  const visiblePrs = prs.slice(startIndex, startIndex + WINDOW_SIZE);
+  const { visibleItems: visiblePrs, startIndex } = useWindowedSlice(prs, selectedIndex, 18);
 
   return (
     <Table
@@ -98,35 +96,37 @@ export const PRTable: React.FC<PRTableProps> = ({
       header={startIndex > 0 ? (
         <Text color="dim italic">  ↑ {startIndex} more pull requests...</Text>
       ) : undefined}
-      footer={startIndex + WINDOW_SIZE < total ? (
-        <Text color="dim italic">  ↓ {total - (startIndex + WINDOW_SIZE)} more pull requests...</Text>
+      footer={startIndex + 18 < prs.length ? (
+        <Text color="dim italic">  ↓ {prs.length - (startIndex + 18)} more pull requests...</Text>
       ) : undefined}
       renderCell={(col, val, row, rowIndex) => {
         const { myReviewColor, approvals, changesRequested } = row._raw;
         const isSelected = (rowIndex + startIndex) === selectedIndex;
 
         if (col === "id" || col === "created" || col === "updated") {
-          return <Text color={isSelected ? "black" : "dim"}>{val}</Text>;
+          return <Text color={isSelected ? "black" : "dim"}>{val as React.ReactNode}</Text>;
         }
         if (col === "author") {
-          return <Text color={isSelected ? "black" : "yellow"}>{val}</Text>;
+          return <Text color={isSelected ? "black" : "yellow"}>{val as React.ReactNode}</Text>;
         }
         if (col === "me" && showMeColumn) {
-          return <Text bold color={isSelected ? "black" : myReviewColor}>{val}</Text>;
+          return <Text bold color={isSelected ? "black" : myReviewColor}>{val as React.ReactNode}</Text>;
         }
         if (col === "fb") {
-          return <Text color={isSelected ? "black" : (val > 0 ? "magenta" : "dim")}>{val}</Text>;
+          const n = val as number;
+          return <Text color={isSelected ? "black" : (n > 0 ? "magenta" : "dim")}>{n}</Text>;
         }
         if (col === "nr") {
-          return <Text color={isSelected ? "black" : (val > 0 ? "red" : "dim")}>{val}</Text>;
+          const n = val as number;
+          return <Text color={isSelected ? "black" : (n > 0 ? "red" : "dim")}>{n}</Text>;
         }
         if (col === "status") {
-          const statusColor = isSelected 
-            ? "black" 
+          const statusColor = isSelected
+            ? "black"
             : (changesRequested ? "red" : (approvals > 0 ? "green" : "dim"));
-          return <Text color={statusColor}>{val}</Text>;
+          return <Text color={statusColor}>{val as React.ReactNode}</Text>;
         }
-        return val;
+        return val as React.ReactNode;
       }}
     />
   );

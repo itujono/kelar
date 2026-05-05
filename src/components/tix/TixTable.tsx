@@ -3,6 +3,7 @@ import { Box, Text } from "ink";
 import { formatRelativeTime, isZombieTicket } from "../../utils";
 import { type JiraIssue } from "../../jira";
 import { Table } from "../Table";
+import { useWindowedSlice } from "../../hooks/useWindowedSlice";
 
 interface TixTableProps {
   tickets: JiraIssue[];
@@ -71,16 +72,7 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
 
   const zombies = tickets.filter(isZombieTicket).length;
 
-  // Calculate windowed view
-  const WINDOW_SIZE = 18;
-  let start = 0;
-  if (tickets.length > WINDOW_SIZE) {
-    start = Math.max(0, selectedIndex - Math.floor(WINDOW_SIZE / 2));
-    if (start + WINDOW_SIZE > tickets.length) {
-      start = tickets.length - WINDOW_SIZE;
-    }
-  }
-  const visibleTickets = tickets.slice(start, start + WINDOW_SIZE);
+  const { visibleItems: visibleTickets, startIndex } = useWindowedSlice(tickets, selectedIndex, 18);
 
   return (
     <Box flexDirection="column" flexGrow={1} flexShrink={1}>
@@ -95,40 +87,37 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
           Log: formatSeconds(t.fields.timespent),
           Created: formatRelativeTime(new Date(t.fields.created)),
           Updated: formatRelativeTime(new Date(t.fields.updated)),
-          _raw: t
+          _statusCategoryKey: t.fields.status.statusCategory.key,
         }))}
         columns={["ID", "Prio", "Title", "Status", "Assignee", "Est", "Log", "Created", "Updated"]}
         columnWidths={COL_WIDTHS}
         compact
-        selectedIndex={selectedIndex - start}
-        header={start > 0 ? (
-          <Text color="dim italic">  ↑ {start} more tickets...</Text>
+        selectedIndex={selectedIndex - startIndex}
+        header={startIndex > 0 ? (
+          <Text color="dim italic">  ↑ {startIndex} more tickets...</Text>
         ) : undefined}
         renderCell={(col, val, row, rowIndex) => {
-          const t = row._raw as JiraIssue;
-          const isSelected = (selectedIndex - start) === rowIndex;
+          const isSelected = (selectedIndex - startIndex) === rowIndex;
 
           if (col === "Prio") {
-            return <Text color={isSelected ? "black" : getPriorityColor(val)}>{val}</Text>;
+            return <Text color={isSelected ? "black" : getPriorityColor(val as string)}>{val as React.ReactNode}</Text>;
           }
           if (col === "Status") {
-            return <Text color={isSelected ? "black" : getStatusColor(t.fields.status.statusCategory.key, val)}>{val}</Text>;
+            return <Text color={isSelected ? "black" : getStatusColor(row._statusCategoryKey, val as string)}>{val as React.ReactNode}</Text>;
           }
           if (col === "Assignee") {
-            return <Text color={isSelected ? "black" : "yellow"}>{val}</Text>;
+            return <Text color={isSelected ? "black" : "yellow"}>{val as React.ReactNode}</Text>;
           }
-          if (isSelected) return val;
+          if (isSelected) return val as React.ReactNode;
           if (col === "ID" || col === "Est" || col === "Log" || col === "Created" || col === "Updated") {
-            return <Text color="dim">{val}</Text>;
+            return <Text color="dim">{val as React.ReactNode}</Text>;
           }
-          return val;
+          return val as React.ReactNode;
         }}
         footer={
           <Box flexDirection="column" flexGrow={1}>
-            {start + WINDOW_SIZE < tickets.length && (
-              <Box borderStyle="single" borderBottom={true} borderTop={false} borderLeft={false} borderRight={false} borderColor="dim" paddingX={1}>
-                <Text color="dim italic">  ↓ {tickets.length - (start + WINDOW_SIZE)} more tickets...</Text>
-              </Box>
+            {startIndex + 18 < tickets.length && (
+              <Text color="dim italic">  ↓ {tickets.length - (startIndex + 18)} more tickets...</Text>
             )}
             <Box paddingX={1}>
               <Text color="dim">Total: </Text><Text bold>{total}</Text>
