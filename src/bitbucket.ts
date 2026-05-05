@@ -126,6 +126,29 @@ function bbHeaders(): Record<string, string> {
   return { "Authorization": getAuthHeader() };
 }
 
+export function isBitbucketMe(user: BitbucketUser, config: ReturnType<typeof getBitbucketConfig>, meData?: BitbucketUser): boolean {
+  if (meData) {
+    if (meData.account_id && user.account_id?.toLowerCase() === meData.account_id.toLowerCase()) return true;
+    if (meData.nickname && user.nickname?.toLowerCase() === meData.nickname.toLowerCase()) return true;
+  }
+
+  const myUsername = config.BITBUCKET_USERNAME?.toLowerCase().trim();
+  const myHandle = myUsername?.includes("@") ? myUsername.split("@")[0] : myUsername;
+  const nick = user.nickname?.toLowerCase().trim();
+  const display = user.display_name?.toLowerCase().trim();
+  const account = user.account_id?.toLowerCase().trim();
+
+  return (
+    nick === myUsername ||
+    nick === myHandle ||
+    display === myUsername ||
+    (myUsername && display?.includes(myUsername)) ||
+    (myHandle && display?.includes(myHandle)) ||
+    account === myUsername ||
+    account === myHandle
+  );
+}
+
 export const fetchPRs = async (all = false): Promise<BitbucketPR[]> => {
   const { BITBUCKET_USERNAME } = getBitbucketConfig();
   const baseUrl = getBaseUrl();

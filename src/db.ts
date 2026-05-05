@@ -27,13 +27,17 @@ db.run(`
 `);
 
 // Migration: Add columns if they don't exist
-try {
+const existingColumns = new Set(
+  (db.prepare("PRAGMA table_info(logs)").all() as { name: string }[]).map(col => col.name)
+);
+
+if (!existingColumns.has("label")) {
   db.run("ALTER TABLE logs ADD COLUMN label TEXT");
-} catch {}
-try {
+}
+if (!existingColumns.has("jira_worklog_id")) {
   db.run("ALTER TABLE logs ADD COLUMN jira_worklog_id TEXT");
   db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_worklog_id ON logs(jira_worklog_id)");
-} catch {}
+}
 
 db.run(`
   CREATE TABLE IF NOT EXISTS config (
@@ -78,9 +82,9 @@ export const dbOps = {
 
   getLogs: (sinceISO?: string): LogDbRow[] => {
     if (sinceISO) {
-      return db.prepare("SELECT * FROM logs WHERE created_at >= ? ORDER BY created_at DESC").all(sinceISO) as any;
+      return db.prepare("SELECT * FROM logs WHERE created_at >= ? ORDER BY created_at DESC").all(sinceISO) as LogDbRow[];
     }
-    return db.prepare("SELECT * FROM logs ORDER BY created_at DESC").all() as any;
+    return db.prepare("SELECT * FROM logs ORDER BY created_at DESC").all() as LogDbRow[];
   },
 
   deleteLogsByWorklogIds: (ids: string[]) => {

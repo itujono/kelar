@@ -1,8 +1,9 @@
 import { Box, Text } from "ink";
-import { type BitbucketPR } from "../../bitbucket";
+import { type BitbucketPR, isBitbucketMe } from "../../bitbucket";
 import { getBitbucketConfig } from "../../config";
 import { formatRelativeTime } from "../../utils";
 import { Table } from "../Table";
+import React from "react";
 
 interface PRTableProps {
   prs: BitbucketPR[];
@@ -17,9 +18,7 @@ export const PRTable: React.FC<PRTableProps> = ({
   showMeColumn = true,
   metrics = {}
 }) => {
-  const config = getBitbucketConfig();
-  const myUsername = config.BITBUCKET_USERNAME?.toLowerCase();
-  const myHandle = myUsername?.includes("@") ? myUsername.split("@")[0] : myUsername;
+  const config = React.useMemo(() => getBitbucketConfig(), []);
 
   // Define columns and widths
   const COL_WIDTHS: Partial<Record<string, number>> = {
@@ -45,26 +44,14 @@ export const PRTable: React.FC<PRTableProps> = ({
         const authorName = pr.author.display_name.split(" ")[0] || "Unknown";
 
         // My review status
-        const myParticipant = pr.participants?.find(p => {
-          if (!myUsername) return false;
-          const nick = p.user.nickname?.toLowerCase();
-          const display = p.user.display_name?.toLowerCase();
-          const account = p.user.account_id?.toLowerCase();
-          return (
-            nick === myUsername ||
-            nick === myHandle ||
-            display === myUsername ||
-            (myUsername && display?.includes(myUsername)) ||
-            (myHandle && display?.includes(myHandle)) ||
-            account === myUsername ||
-            account === myHandle
-          );
-        });
+        const myParticipant = pr.participants?.find(p =>
+          isBitbucketMe(p.user, config)
+        );
 
         let myReviewIcon = "-";
         let myReviewColor = "dim";
 
-        if (!myUsername) {
+        if (!config.BITBUCKET_USERNAME) {
           myReviewIcon = "?";
           myReviewColor = "yellow";
         } else if (myParticipant) {
@@ -102,9 +89,9 @@ export const PRTable: React.FC<PRTableProps> = ({
       })}
       columns={[
         "id", "author", "title",
-        ...(showMeColumn ? ["me"] : []),
+        ...(showMeColumn ? ["me" as const] : []),
         "fb", "nr", "created", "updated", "status"
-      ] as any}
+      ]}
       columnWidths={COL_WIDTHS}
       compact
       selectedIndex={selectedIndex - startIndex}

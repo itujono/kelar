@@ -1,3 +1,4 @@
+import React from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import { useQuery } from "@tanstack/react-query";
@@ -8,7 +9,8 @@ import {
   fetchPRActivity,
   fetchPRComments,
   fetchMe,
-  calculateVelocity
+  calculateVelocity,
+  isBitbucketMe
 } from "../../bitbucket";
 
 
@@ -46,31 +48,10 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
   });
 
   const velocity = activity ? calculateVelocity(pr, activity) : null;
-  const myAccountId = me?.account_id?.toLowerCase();
-  const myNickname = me?.nickname?.toLowerCase();
+  const config = React.useMemo(() => getBitbucketConfig(), []);
 
   const isMe = (u: BitbucketUser) => {
-    if (myAccountId && u.account_id?.toLowerCase() === myAccountId) return true;
-    if (myNickname && u.nickname?.toLowerCase() === myNickname) return true;
-
-    // Fallback logic
-    const config = getBitbucketConfig();
-    const myUsername = config.BITBUCKET_USERNAME?.toLowerCase().trim();
-    const myHandle = myUsername?.includes("@") ? myUsername.split("@")[0] : myUsername;
-    const nick = u.nickname?.toLowerCase().trim();
-    const display = u.display_name?.toLowerCase().trim();
-    const account = u.account_id?.toLowerCase().trim();
-
-    return (
-      nick === myUsername ||
-      nick === myHandle ||
-      display === myUsername ||
-      display === myHandle ||
-      (myUsername && display?.includes(myUsername)) ||
-      (myHandle && display?.includes(myHandle)) ||
-      account === myUsername ||
-      account === myHandle
-    );
+    return isBitbucketMe(u, config, me ?? undefined);
   };
 
   const myPeerComments = comments?.filter(c => !isMe(c.user)) || [];
