@@ -1,217 +1,106 @@
-# Kelar CLI 🍗
+# Kelar CLI
 
-**Kelar** is a terminal-based Jira and Bitbucket manager built with **Bun**, **TypeScript**, and **Ink**. It provides a TUI (Terminal User Interface) to manage your productivity, tracking worklogs, and pull request health with real-time analytics.
-
-## Features
-
-- **Jira Work Logs**: Smart time parsing (`1h 30m`), automatic rounding, and monthly goal tracking.
-- **Bitbucket PR Observability**: Track pull requests, approvals, feedback cycles, and velocity metrics directly in the terminal.
-- **Intelligent Sync & Mirror**: Maintains a local SQLite database (`~/.kelar/kelar.db`) with smart caching.
-- **Generation Mode**: Generate high-fidelity HTML reports for your work progress.
-- **Privacy First**: All credentials and data stay on your machine in a local SQLite database.
-
-## Installation
-
-1.  **Clone the repository**.
-2.  **Install dependencies**:
-    ```bash
-    bun install
-    ```
-3.  **Link the binary**:
-    ```bash
-    bun link
-    ```
-    *Now you can use the `kelar` command from anywhere.*
-
-## Configuration
-
-### Work Logs (Jira)
-```bash
-kelar log config set JIRA_DOMAIN your-domain.atlassian.net
-kelar log config set JIRA_EMAIL your@email.com
-kelar log config set JIRA_TOKEN your_api_token
-kelar log config set JIRA_ACCOUNT_ID your_jira_account_id
-kelar log config set PERSONAL_TICKET_ID IMM-123  # Target for personal work strings
-kelar log config set MONTHLY_TARGET_HOURS 180    # Your monthly hours quota
-kelar log config set LAST_CALCULATION_DAY 25     # Deadline day each month
-```
-
-### Pull Requests (Bitbucket)
-```bash
-kelar pr config set BITBUCKET_EMAIL your@email.com
-kelar pr config set BITBUCKET_TOKEN your_atlassian_api_token
-kelar pr config set BITBUCKET_WORKSPACE workspace-slug
-kelar pr config set BITBUCKET_REPO_SLUG repo-slug
-kelar pr config set BITBUCKET_USERNAME your_username  # For identifying your work, approvals, and replies
-```
-
-### Tickets (Jira)
-The `tix` module shares the same configuration as the **Work Logs** module. If you've already configured your Jira domain, email, and token above, you're all set!
-
-> [!TIP]
-> **Identity Discovery**: Kelar automatically fetches your canonical Bitbucket profile (nickname, account ID) to ensure your approvals and replies are correctly identified, even if your login username differs from your display name.
-
-## Usage
-
-### Work Logs
-
-#### Logging New Work
-```bash
-# Log with a comment
-kelar log new IMM-123 '1h 30m' "Refactoring the API"
-
-# Log without a comment (It will prompt you!)
-kelar log new IMM-123 45m
-```
-
-#### Viewing Summaries
-```bash
-# Available periods: day, week, month
-kelar log list month
-```
-- Shows progress bars, deadline countdowns, and percentages.
-- Interactive Controls & Detail Pane:
-    - **Detail Pane**: Shows item-specific **Statistics** (Total Time for that ticket, Entry Count) and a **Recent History** list of all logs for that item.
-    - **`↑/↓`**: Navigate logs and update the detail pane in real-time.
-    - **`o`**: Instantly **Open** the selected Jira ticket in your browser.
-    - **`/`**: Real-time filtering with automatic result count.
-    - **`p`**: Quickly switch period (**Today**, **This Week**, **This Month**).
-    - **`g`**: **Generate** high-fidelity HTML report instantly.
-    - **`s`**: Open **Sort Menu** (Newest, Oldest, Longest, Shortest).
-    - **`r`**: **Refetch** latest data and clear cache.
-
-#### Generating Reports
-```bash
-kelar log generate month
-```
-Generates a styled `kelar-report-month-dd-MM-yyyy-HHmm.html` file for sharing with management.
-
-### Pull Requests
-
-The `pr` command provides a real-time view of your team's code review status.
-
-```bash
-# View your active PRs
-kelar pr list
-
-# View all open PRs in the repository
-kelar pr list --all
-```
-
-#### Table View
-- All list views (Logs, Tickets, PRs) utilize a standardized, high-fidelity `Table` component with rounded borders and integrated metadata headers/footers.
-- **Windowed Navigation**: Tables intelligently limit visible items (e.g., 18 for entries, 10 for user lists) with dynamic `↑/↓` indicators in the header/footer to ensure the UI remains focused and snappy.
-- Tables intelligently scale by shrinking flexible text columns (like `Title` or `Label`) while preserving vital fixed-width columns (`ID`, `Status`, `Prio`), ensuring a perfect fit across different terminal widths and side panes.
-- Browse PRs with relative timestamps (`~ 2 hours`), approval counts, and refined metrics:
-    - **`FB`**: Total Feedbacks (comments made by peers).
-    - **`NR`**: Not Replied (unresolved peer comments that haven't received a reply from you yet).
-    - **`Me`**: A personal status column tracking your own approval state on team PRs.
-- Get a deep-dive into the selected PR:
-    - Track **Lead Time** and **Pick-up Latency** (time to first peer interaction).
-    - See who has approved (`✓`) vs. who is still pending (`○`).
-    - Detailed breakdown of **Resolved** vs. **Not Replied** comments from your peers, relative to your own identity.
-- Interactive Controls:
-    - **`↑/↓`**: Navigate the list.
-    - **`/`**: Enter **Filter Mode** to search by Title, Branch, or ID.
-    - **`s`**: Open **Sort Menu** (Newest Updated, Oldest Updated, Newest, Oldest).
-    - **`m`**: Toggle between your PRs (**MINE**) and **ALL** repository PRs.
-    - **`o`**: Instantly **Open** the PR in your default browser.
-    - **`c`**: **Copy** the source branch name to your clipboard.
-    - **`r`**: **Refetch** latest data from Bitbucket (invalidates list and detail cache).
-    - **`Esc`**: Smart escape — first clear filter text, then exit filter mode.
-
-### Tickets (Jira Engineering Intelligence)
-
-The `tix` command targets "Engineering Intelligence" over raw data mirroring. It focuses on observability, dependencies, and monthly goal tracking.
-
-```bash
-# View your active tickets
-kelar tix list
-
-# View active tickets for a team member (select peer)
-kelar tix list --peer
-```
-
-#### Observability Dashboard
-- Browse tickets with a compact layout featuring **ID, Prio, Title, Status, Assignee, Est, Log, Created, and Updated** columns.
-- Tracks your current selection, sort order, and **Daily Context Score** (count of unique tickets you've worked on today).
-- The ticket table footer tracks your overall monthly stats (Total, To-Do, In Progress, Review, and "Zombie" tickets) within the single unified view.
-- Detail Pane:
-    - Lists **Project** and **Reporter** for the selected ticket.
-    - Highlights stagnant "In Progress" tickets with no activity in >48 hours (zombie tickets).
-    - Recursive ASCII visualization of "Blocked By" links.
-- Visual progress bar, percentage tracking against your hours goal, and a deadline countdown.
-- Interactive Controls:
-    - **`l`**: **Log Work** with a multi-field modal (Time & Comment).
-    - **`m`**: **Move** ticket status via interactive transition selection.
-    - **`e`**: **Estimate** original time.
-    - **`v`**: **View** full ticket description (parsed from Atlassian ADF to readable text).
-    - **`p`**: Toggle between your tickets (**Me**) and **Peer** selection.
-    - **`o`**: **Open** the ticket in your default browser.
-    - **`c`**: **Copy** the Jira link to your clipboard.
-    - **`/`**: Real-time filtering.
-    - **`s`**: Open **Sort Menu** (Newest, Oldest, Updated, High Priority).
-    - **`r`**: **Refetch** latest data and clear cache.
+A terminal-based Jira and Bitbucket manager. Track worklogs, monitor pull requests, and stay on top of your tickets — all from the command line.
 
 ## Command Reference
 
 ### Work Logs (`log`)
-| Command | Arguments | Description |
-| :--- | :--- | :--- |
-| `kelar log new` | `<id> <time> [msg]` | Log new work. Prompts for comment if `msg` is missing. |
-| `kelar log list` | `[period]` | View logs for `day`, `week`, or `month` (default). Press `g` to generate report. |
-| `kelar log generate` | `[period]` | Generate a high-fidelity HTML report for a period. |
-| `kelar log config list`| - | View current Jira configuration. |
-| `kelar log config set` | `<key> <val>` | Update Jira config (e.g. `JIRA_TOKEN`, `MONTHLY_TARGET_HOURS`). |
+
+| Command | Description |
+| :--- | :--- |
+| `kelar log new <id> <time> [msg]` | Log work. Parses `1h 30m`, `45m`, etc. |
+| `kelar log list [period]` | View logs for `day`, `week`, or `month`. |
+| `kelar log generate [period]` | Generate an HTML report. |
+| `kelar log config list` | View Jira config. |
+| `kelar log config set <key> <val>` | Update a config value. |
 
 ### Pull Requests (`pr`)
-| Command | Arguments | Description |
-| :--- | :--- | :--- |
-| `kelar pr list` | `[--all] [--sort <type>]` | View active PRs. Press `m` to toggle modes interactively. |
-| `kelar pr config list` | - | View current Bitbucket configuration. |
-| `kelar pr config set` | `<key> <val>` | Update Bitbucket config (e.g. `BITBUCKET_REPO_SLUG`). |
+
+| Command | Description |
+| :--- | :--- |
+| `kelar pr list [--all]` | View your open PRs. `--all` shows the whole repo. |
+| `kelar pr config list` | View Bitbucket config. |
+| `kelar pr config set <key> <val>` | Update a config value. |
 
 ### Tickets (`tix`)
-| Command | Arguments | Description |
-| :--- | :--- | :--- |
-| `kelar tix list` | `[--peer]` | View your tickets. Use `--peer` to interactively select a teammate. |
 
-## Data Storage & Security
+| Command | Description |
+| :--- | :--- |
+| `kelar tix list [--peer]` | View your active tickets. `--peer` to browse a teammate's. |
 
-- All worklogs and configuration (including your tokens) are stored in **plaintext** in `~/.kelar/kelar.db`.
-- Data is stored outside the project folder, so you can safely push code without leaking secrets.
-- No data is shared outside of your machine and your designated Atlassian domains.
-- **Warning**: Jira and Bitbucket API tokens are stored without encryption. Anyone with filesystem access to `~/.kelar/kelar.db` can read them. Ensure your machine is properly secured.
-
-### Browsing the Database
-Since Kelar uses a standard SQLite database, you can manually inspect or query your data using any SQLite-compatible tool:
-- **CLI**: `sqlite3 ~/.kelar/kelar.db`
-- **GUI**: [DB Browser for SQLite](https://sqlitebrowser.org/), [Beekeeper Studio](https://www.beekeeperstudio.io/), or [DBeaver](https://dbeaver.io/).
-
-## Technical Details
-
-### Development
+## Installation
 
 ```bash
-# Run the CLI in development mode
-bun run dev
-
-# Or pass commands directly
-kelar log list month
-kelar pr list --all
-kelar tix list --peer
-
-# Run tests
-bun test
-
-# Type check
-bun run typecheck
+bun install
+bun link
 ```
 
-### Stack
+Now `kelar` is available anywhere.
 
-- Bun
-- Ink-based flexbox layouts
-- SQLite (via `bun:sqlite`)
-- Jira Cloud & Bitbucket Cloud REST APIs (v3/v2)
-- Timezone uses the system's local timezone offset automatically.
+## Configuration
+
+### Jira (required for `log` and `tix`)
+
+```bash
+kelar log config set JIRA_DOMAIN       your-domain.atlassian.net
+kelar log config set JIRA_EMAIL        your@email.com
+kelar log config set JIRA_TOKEN        your_api_token
+kelar log config set JIRA_ACCOUNT_ID   your_account_id
+kelar log config set PERSONAL_TICKET_ID IMM-123
+kelar log config set MONTHLY_TARGET_HOURS 180
+kelar log config set LAST_CALCULATION_DAY 25
+```
+
+### Bitbucket (required for `pr`)
+
+```bash
+kelar pr config set BITBUCKET_EMAIL      your@email.com
+kelar pr config set BITBUCKET_TOKEN      your_api_token
+kelar pr config set BITBUCKET_WORKSPACE  workspace-slug
+kelar pr config set BITBUCKET_REPO_SLUG  repo-slug
+kelar pr config set BITBUCKET_USERNAME   your_username
+```
+
+## Usage
+
+```bash
+# Log time
+kelar log new IMM-123 '1h 30m' "Refactoring the API"
+
+# View monthly summary
+kelar log list month
+
+# Generate an HTML report
+kelar log generate month
+
+# Check your PRs
+kelar pr list
+
+# Browse your tickets
+kelar tix list
+```
+
+Each view is interactive — navigate with arrow keys, filter with `/`, sort with `s`, and press `q` to quit. Open items in your browser with `o`.
+
+## Data Storage
+
+- Everything lives in `~/.kelar/kelar.db` — a local SQLite database.
+- Tokens are stored in plaintext. Keep your machine secured.
+- No data leaves your machine.
+
+### Inspect the database
+
+```bash
+sqlite3 ~/.kelar/kelar.db
+```
+
+## Development
+
+```bash
+bun run dev            # Run the CLI in dev mode
+bun run dev log list month  # Pass commands directly
+bun test               # Run tests
+bun run typecheck      # Type check
+```
+
+Built with Bun, TypeScript, Ink, SQLite. Talks to Jira Cloud REST API v3 and Bitbucket Cloud API v2.
