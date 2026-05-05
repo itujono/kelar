@@ -1,5 +1,6 @@
 import { test, expect, describe } from "bun:test";
-import { parseJiraTime, roundToNearest5, formatMinutes, extractAdfText } from "../src/utils";
+import { parseJiraTime, roundToNearest5, formatMinutes, formatDuration, extractAdfText, isZombieTicket } from "../src/utils";
+import type { JiraIssue } from "../src/jira";
 
 describe("Time Parsing", () => {
   test("parses minutes", () => {
@@ -63,6 +64,52 @@ describe("Formatting", () => {
   });
 });
 
+describe("formatDuration", () => {
+  test("null returns default label", () => {
+    expect(formatDuration(null)).toBe("-");
+  });
+
+  test("null with custom nullLabel", () => {
+    expect(formatDuration(null, { nullLabel: "N/A" })).toBe("N/A");
+  });
+
+  test("zero seconds", () => {
+    expect(formatDuration(0)).toBe("0m");
+  });
+
+  test("seconds to minutes only", () => {
+    expect(formatDuration(60)).toBe("1m");
+    expect(formatDuration(1500)).toBe("25m");
+  });
+
+  test("seconds to hours only", () => {
+    expect(formatDuration(3600)).toBe("1h");
+    expect(formatDuration(7200)).toBe("2h");
+  });
+
+  test("seconds to hours and minutes", () => {
+    expect(formatDuration(3660)).toBe("1h 1m");
+    expect(formatDuration(5400)).toBe("1h 30m");
+    expect(formatDuration(54300)).toBe("15h 5m");
+  });
+
+  test("showDays false — no days, just hours", () => {
+    expect(formatDuration(86400)).toBe("24h");
+    expect(formatDuration(90000)).toBe("25h");
+  });
+
+  test("showDays true — shows days", () => {
+    expect(formatDuration(86400, { showDays: true })).toBe("1d 0h");
+    expect(formatDuration(90000, { showDays: true })).toBe("1d 1h");
+    expect(formatDuration(173400, { showDays: true })).toBe("2d 0h");
+    expect(formatDuration(176400, { showDays: true })).toBe("2d 1h");
+  });
+
+  test("showDays with less than a day", () => {
+    expect(formatDuration(3660, { showDays: true })).toBe("1h 1m");
+  });
+});
+
 describe("extractAdfText", () => {
   test("returns empty string for null", () => {
     expect(extractAdfText(null)).toBe("");
@@ -113,6 +160,96 @@ describe("extractAdfText", () => {
       ]
     };
     expect(extractAdfText(doc)).toBe("\n");
+  });
+});
+
+describe("isZombieTicket", () => {
+  const makeTicket = (overrides: Partial<JiraIssue["fields"] & { key?: string; id?: string }> = {}): JiraIssue => ({
+    id: "1",
+    key: "TEST-1",
+    fields: {
+      summary: "Test",
+      description: null,
+      status: { name: "In Progress", statusCategory: { name: "In Progress", key: "indeterminate" } },
+      project: { name: "Test", key: "TEST" },
+      priority: null,
+      assignee: null,
+      reporter: null,
+      timeoriginalestimate: null,
+      timespent: null,
+      created: new Date().toISOString(),
+      updated: new Date().toISOString(),
+      issuelinks: [],
+      ...overrides,
+    },
+  });
+
+  test("null or falsy ticket returns false", () => {
+    expect(isZombieTicket(null as any)).toBe(false);
+    expect(isZombieTicket(undefined as any)).toBe(false);
+  });
+
+  test("done category returns false", () => {
+    const t = makeTicket({ status: { name: "Done", statusCategory: { name: "Done", key: "done" } } });
+    expect(isZombieTicket(t)).toBe(false);
+  });
+
+  test("new category (todo) returns false", () => {
+    const t = makeTicket({ status: { name: "To Do", statusCategory: { name: "To Do", key: "new" } } });
+    expect(isZombieTicket(t)).toBe(false);
+  });
+
+  test("waiting for review returns false", () => {
+    const t = makeTicket({ status: { name: "In Review", statusCategory: { name: "In Progress", key: "indeterminate" } } });
+    expect(isZombieTicket(t)).toBe(false);
+  });
+
+  test("waiting for QA returns false", () => {
+    const t = makeTicket({ status: { name: "In QA", statusCategory: { name: "In Progress", key: "indeterminate" } } });
+    expect(isZombieTicket(t)).toBe(false);
+  });
+
+  test("done/closed/resolved/canceled in status name returns false", () => {
+    const names = ["Done", "Closed", "Resolved", "Canceled"];
+    for (const name of names) {
+      const t = makeTicket({ status: { name, statusCategory: { name: "In Progress", key: "indeterminate" } } });
+      expect(isZombieTicket(t)).toBe(false);
+    }
+  });
+
+  test("in progress with recent activity returns false", () => {
+    const t = makeTicket({
+      status: { name: "In Progress", statusCategory: { name: "In Progress", key: "indeterminate" } },
+      updated: new Date().toISOString(),
+    });
+    expect(isZombieTicket(t)).toBe(false);
+  });
+
+  test("in progress with no activity for >48h returns true", () => {
+    const staleDate = new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString();
+    const t = makeTicket({
+      status: { name: "In Progress", statusCategory: { name: "In Progress", key: "indeterminate" } },
+      updated: staleDate,
+    });
+    expect(isZombieTicket(t)).toBe(true);
+  });
+
+  test("in progress with recent comment returns false", () => {
+    const t = makeTicket({
+      status: { name: "In Progress", statusCategory: { name: "In Progress", key: "indeterminate" } },
+      updated: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
+      comment: { comments: [{ id: "1", created: new Date().toISOString(), author: { accountId: "u", displayName: "User" }, body: null as any }] },
+    });
+    expect(isZombieTicket(t)).toBe(false);
+  });
+
+  test("in progress with recent worklog returns false", () => {
+    const t = makeTicket({
+      status: { name: "In Progress", statusCategory: { name: "In Progress", key: "indeterminate" } },
+      updated: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
+      worklog: { worklogs: [{ id: "1", started: new Date().toISOString(), timeSpentSeconds: 3600, author: { accountId: "u", displayName: "User" }, comment: null }] },
+    });
+    expect(isZombieTicket(t)).toBe(false);
   });
 });
 

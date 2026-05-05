@@ -61,14 +61,19 @@ export interface FormatDurationOptions {
 
 export function formatDuration(totalSeconds: number | null, opts?: FormatDurationOptions): string {
   if (totalSeconds === null || totalSeconds === undefined) return opts?.nullLabel ?? "-";
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
 
-  if (opts?.showDays && days > 0) return `${days}d ${hours}h`;
-  if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
-  if (hours > 0) return `${hours}h`;
-  return `${minutes}m`;
+  const totalHours = Math.floor(totalSeconds / 3600);
+  const remainingMinutes = Math.floor((totalSeconds % 3600) / 60);
+
+  if (opts?.showDays) {
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = totalHours % 24;
+    if (days > 0) return `${days}d ${hours}h`;
+  }
+
+  if (totalHours > 0 && remainingMinutes > 0) return `${totalHours}h ${remainingMinutes}m`;
+  if (totalHours > 0) return `${totalHours}h`;
+  return `${remainingMinutes}m`;
 }
 
 /**
