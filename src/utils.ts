@@ -1,3 +1,4 @@
+import { type JiraAdfDoc } from "./jira";
 import { formatDistanceToNow } from "date-fns";
 import { type JiraIssue } from "./jira";
 
@@ -97,16 +98,16 @@ export function getNowWithOffset(): string {
 /**
  * Recursively extracts plain text from Jira ADF (Atlassian Document Format).
  */
-export function extractAdfText(doc: any): string {
+export function extractAdfText(doc: JiraAdfDoc | string | null | undefined): string {
   if (!doc) return "";
   if (typeof doc === "string") return doc;
   let text = "";
-  if (doc.text) text += doc.text;
+  if ("text" in doc && typeof doc.text === "string") text += doc.text;
   if (doc.content && Array.isArray(doc.content)) {
-    doc.content.forEach((c: any) => {
-      text += extractAdfText(c);
+    for (const c of doc.content) {
+      text += extractAdfText(c as JiraAdfDoc | string);
       if (c.type === "paragraph" || c.type === "heading") text += "\n";
-    });
+    }
   }
   return text;
 }

@@ -4,6 +4,7 @@ import { startOfDay, startOfWeek, startOfMonth, format, differenceInCalendarDays
 import { dbOps, type LogDbRow } from "../db";
 import { searchIssues, fetchIssueWorklogs } from "../jira";
 import { getAppConfig, isConfigValid, DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS } from "../config";
+import { useListState } from "./useListState";
 
 export type SortType = "longest" | "shortest" | "newest" | "oldest";
 export type PeriodType = "day" | "week" | "month";
@@ -14,6 +15,7 @@ const CACHE_THRESHOLD_MINUTES = 5;
 export function useLogView(period: PeriodType, sortBy: SortType) {
   const { exit } = useApp();
   const config = useMemo(() => getAppConfig(), []);
+  const nav = useListState<SortType>(sortBy);
 
   const targetHours = parseInt(config.MONTHLY_TARGET_HOURS, 10) || DEFAULT_MONTHLY_TARGET_HOURS;
   const calculationDay = parseInt(config.LAST_CALCULATION_DAY, 10) || DEFAULT_CALCULATION_DAY;
@@ -21,15 +23,9 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
   const [status, setStatus] = useState<ViewStatus>("IDLE");
   const [logs, setLogs] = useState<LogDbRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [filterQuery, setFilterQuery] = useState("");
-  const [isFiltering, setIsFiltering] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [isSorting, setIsSorting] = useState(false);
-  const [sortType, setSortType] = useState<SortType>(sortBy);
-  const [sortIndex, setSortIndex] = useState(0);
-  const [currentPeriod, setCurrentPeriod] = useState<PeriodType>(period);
   const [isSelectingPeriod, setIsSelectingPeriod] = useState(false);
   const [periodIndex, setPeriodIndex] = useState(0);
+  const [currentPeriod, setCurrentPeriod] = useState<PeriodType>(period);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const sortOptions = useMemo(() => [
@@ -150,8 +146,8 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
 
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
-      if (!filterQuery) return true;
-      const search = filterQuery.toLowerCase();
+      if (!nav.filterQuery) return true;
+      const search = nav.filterQuery.toLowerCase();
       const logType = log.is_jira ? "jira" : "personal";
       return (
         log.identifier.toLowerCase().includes(search) ||
@@ -159,14 +155,14 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
         logType.includes(search)
       );
     });
-  }, [logs, filterQuery]);
+  }, [logs, nav.filterQuery]);
 
   const sortedLogs = useMemo(() => {
     return [...filteredLogs].sort((a, b) => {
       const timeA = new Date(a.created_at).getTime();
       const timeB = new Date(b.created_at).getTime();
 
-      switch (sortType) {
+      switch (nav.sortType) {
         case "newest": return timeB - timeA;
         case "longest": return b.minutes - a.minutes;
         case "shortest": return a.minutes - b.minutes;
@@ -175,7 +171,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
           return timeA - timeB;
       }
     });
-  }, [filteredLogs, sortType]);
+  }, [filteredLogs, nav.sortType]);
 
   const totalMinutesAll = useMemo(() => {
     return filteredLogs.reduce((sum, log) => sum + log.minutes, 0);
@@ -194,24 +190,17 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     return differenceInCalendarDays(targetDate, now);
   }, [calculationDay]);
 
-  const activeLog = useMemo(() => sortedLogs[selectedIndex], [sortedLogs, selectedIndex]);
-
-  const handleFilterChange = useCallback((val: string) => {
-    const sanitized = val.replace(/^\/+/, "");
-    setFilterQuery(sanitized);
-  }, []);
+  const activeLog = useMemo(() => sortedLogs[nav.selectedIndex], [sortedLogs, nav.selectedIndex]);
 
   useInput((input, key) => {
-    if (isSorting) {
-      if (key.escape) setIsSorting(false);
-      if (key.upArrow) setSortIndex(prev => Math.max(0, prev - 1));
-      if (key.downArrow) setSortIndex(prev => Math.min(sortOptions.length - 1, prev + 1));
+    if (nav.isSorting) {
+      if (key.escape) nav.exitSort();
+      if (key.upArrow) nav.navigateUp(sortOptions.length);
+      if (key.downArrow) nav.navigateDown(sortOptions.length);
       if (key.return) {
-        const option = sortOptions[sortIndex];
-        if (option) {
-          setSortType(option.value);
-        }
-        setIsSorting(false);
+        const option = sortOptions[nav.sortIndex];
+        if (option) nav.setSortType(option.value);
+        nav.exitSort();
       }
       return;
     }
@@ -229,59 +218,35 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       return;
     }
 
-    if (isFiltering) {
-      if (key.return) setIsFiltering(false);
-
+    if (nav.isFiltering) {
+      if (key.return) nav.exitFilter();
       if (key.escape) {
-        if (filterQuery && filterQuery.length > 0) {
-          setFilterQuery("");
-        } else {
-          setIsFiltering(false);
-        }
+        if (nav.filterQuery.length > 0) nav.clearFilter();
+        else nav.exitFilter();
       }
-
-      if (key.ctrl && input === "u") {
-        setFilterQuery("");
-      }
+      if (key.ctrl && input === "u") nav.clearFilter();
       return;
     }
 
     if (input === "q") exit();
-    if (input === "/") {
-      setIsFiltering(true);
-      setFilterQuery("");
-      setSelectedIndex(0);
-      return;
-    }
-    if (input === "s") {
-      setIsSorting(true);
-      setSortIndex(0);
-      return;
-    }
-    if (input === "g" && !isFiltering) {
-      setIsGenerating(true);
-      return;
-    }
+    if (input === "/") { nav.activateFilter(); return; }
+    if (input === "s") { nav.activateSort(); return; }
+    if (input === "g") { setIsGenerating(true); return; }
     if (input === "p") {
       setIsSelectingPeriod(true);
       const currentIndex = periodOptions.findIndex(o => o.value === currentPeriod);
       setPeriodIndex(currentIndex !== -1 ? currentIndex : 0);
       return;
     }
-    if (input === "r") {
-      sync();
-      return;
-    }
+    if (input === "r") { sync(); return; }
 
-    if (key.upArrow) setSelectedIndex(p => Math.max(0, p - 1));
-    if (key.downArrow) setSelectedIndex(p => Math.min(sortedLogs.length - 1, p + 1));
+    if (key.upArrow) nav.navigateUp(sortedLogs.length);
+    if (key.downArrow) nav.navigateDown(sortedLogs.length);
 
     if (input === "o") {
-      const activeLog = sortedLogs[selectedIndex];
       if (activeLog) {
         const domain = config.JIRA_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
         const ticketId = activeLog.is_jira ? activeLog.identifier : config.PERSONAL_TICKET_ID;
-
         if (ticketId) {
           const url = `https://${domain}/browse/${ticketId}`;
           Bun.spawn(["open", url]);
@@ -294,17 +259,17 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     status,
     logs,
     error,
-    filterQuery,
-    isFiltering,
-    setIsFiltering,
-    selectedIndex,
-    setSelectedIndex,
-    isSorting,
-    setIsSorting,
-    sortType,
-    setSortType,
-    sortIndex,
-    setSortIndex,
+    filterQuery: nav.filterQuery,
+    isFiltering: nav.isFiltering,
+    setIsFiltering: nav.setIsFiltering,
+    selectedIndex: nav.selectedIndex,
+    setSelectedIndex: nav.setSelectedIndex,
+    isSorting: nav.isSorting,
+    setIsSorting: nav.setIsSorting,
+    sortType: nav.sortType,
+    setSortType: nav.setSortType,
+    sortIndex: nav.sortIndex,
+    setSortIndex: nav.setSortIndex,
     sortOptions,
     periodOptions,
     currentPeriod,
@@ -320,7 +285,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     totalMinutesAll,
     personalCount,
     daysRemaining,
-    handleFilterChange,
+    handleFilterChange: nav.handleFilterChange,
     sync,
     targetHours,
     calculationDay,

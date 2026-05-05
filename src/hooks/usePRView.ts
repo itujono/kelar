@@ -1,20 +1,16 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useInput, useApp } from "ink";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { fetchPRs, fetchPRComments, fetchMe, type BitbucketUser, type BitbucketPR } from "../bitbucket";
 import { queryClient } from "../queryClient";
+import { useListState } from "./useListState";
 
 export type PRSortType = "newest" | "oldest" | "updated" | "oldest_updated";
 
 export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "updated") {
   const { exit } = useApp();
   const [isAllMode, setIsAllMode] = useState(initialShowAll);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [filterQuery, setFilterQuery] = useState("");
-  const [isFiltering, setIsFiltering] = useState(false);
-  const [sortBy, setSortBy] = useState<PRSortType>(initialSortBy);
-  const [isSorting, setIsSorting] = useState(false);
-  const [sortIndex, setSortIndex] = useState(0);
+  const nav = useListState<PRSortType>(initialSortBy);
 
   const sortOptions: { label: string; value: PRSortType }[] = [
     { label: "Newest Updated", value: "updated" },
@@ -36,15 +32,15 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
 
   const filteredPrs = useMemo(() => {
     return prs?.filter(pr => {
-      if (!filterQuery) return true;
-      const search = filterQuery.toLowerCase();
+      if (!nav.filterQuery) return true;
+      const search = nav.filterQuery.toLowerCase();
       return (
         pr.title.toLowerCase().includes(search) ||
         pr.source.branch.name.toLowerCase().includes(search) ||
         pr.id.toString().includes(search)
       );
     }) || [];
-  }, [prs, filterQuery]);
+  }, [prs, nav.filterQuery]);
 
   const sortedPrs = useMemo(() => {
     return [...filteredPrs].sort((a, b) => {
@@ -53,17 +49,17 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
       const updateA = new Date(a.updated_on).getTime();
       const updateB = new Date(b.updated_on).getTime();
 
-      if (sortBy === "newest") return timeB - timeA;
-      if (sortBy === "oldest") return timeA - timeB;
-      if (sortBy === "updated") return updateB - updateA;
-      if (sortBy === "oldest_updated") return updateA - updateB;
+      if (nav.sortType === "newest") return timeB - timeA;
+      if (nav.sortType === "oldest") return timeA - timeB;
+      if (nav.sortType === "updated") return updateB - updateA;
+      if (nav.sortType === "oldest_updated") return updateA - updateB;
 
       return 0;
     });
-  }, [filteredPrs, sortBy]);
+  }, [filteredPrs, nav.sortType]);
 
   const WINDOW_SIZE = 18;
-  const startIndex = Math.max(0, Math.min(selectedIndex - Math.floor(WINDOW_SIZE / 2), Math.max(0, sortedPrs.length - WINDOW_SIZE)));
+  const startIndex = Math.max(0, Math.min(nav.selectedIndex - Math.floor(WINDOW_SIZE / 2), Math.max(0, sortedPrs.length - WINDOW_SIZE)));
   const visiblePrs = sortedPrs.slice(startIndex, startIndex + WINDOW_SIZE);
 
   const commentsQueries = useQueries({
@@ -142,78 +138,51 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
     };
   }, [prs, me, prMetrics]);
 
-  const activePR = sortedPrs[selectedIndex];
-
-  const handleFilterChange = useCallback((val: string) => {
-    const sanitized = val.replace(/^\/+/, "");
-    setFilterQuery(sanitized);
-    setSelectedIndex(0);
-  }, []);
+  const activePR = sortedPrs[nav.selectedIndex];
 
   useInput((input, key) => {
-    if (isSorting) {
-      if (key.upArrow) {
-        setSortIndex(prev => Math.max(0, prev - 1));
-        return;
-      }
-      if (key.downArrow) {
-        setSortIndex(prev => Math.min(sortOptions.length - 1, prev + 1));
-        return;
-      }
+    if (nav.isSorting) {
+      if (key.escape) nav.exitSort();
+      if (key.upArrow) nav.navigateUp(sortOptions.length);
+      if (key.downArrow) nav.navigateDown(sortOptions.length);
       if (key.return) {
-        const option = sortOptions[sortIndex];
-        if (option) {
-          setSortBy(option.value);
-        }
-        setIsSorting(false);
-        setSelectedIndex(0);
-        return;
-      }
-
-      if (key.escape) {
-        setIsSorting(false);
-        return;
+        const option = sortOptions[nav.sortIndex];
+        if (option) nav.setSortType(option.value);
+        nav.exitSort();
+        nav.setSelectedIndex(0);
       }
       return;
     }
 
-    if (input === "/" && !isFiltering) {
-      setIsFiltering(true);
-      setFilterQuery("");
-      setSelectedIndex(0);
+    if (input === "/" && !nav.isFiltering) {
+      nav.activateFilter();
+      nav.setSelectedIndex(0);
       return;
     }
 
-    if (input === "s" && !isFiltering) {
-      setIsSorting(true);
+    if (input === "s" && !nav.isFiltering) {
+      nav.activateSort();
       return;
     }
 
     if (key.escape) {
-      if (isFiltering) {
-        if (filterQuery.length > 0) {
-          setFilterQuery("");
+      if (nav.isFiltering) {
+        if (nav.filterQuery.length > 0) {
+          nav.clearFilter();
         } else {
-          setIsFiltering(false);
+          nav.exitFilter();
         }
-        setSelectedIndex(0);
+        nav.setSelectedIndex(0);
       }
       return;
     }
 
-    if (isFiltering) return;
+    if (nav.isFiltering) return;
 
-    if (input === "q") {
-      exit();
-    }
+    if (input === "q") exit();
 
-    if (key.upArrow) {
-      setSelectedIndex((prev) => Math.max(0, prev - 1));
-    }
-
-    if (key.downArrow) {
-      setSelectedIndex((prev) => Math.min(sortedPrs.length - 1, prev + 1));
-    }
+    if (key.upArrow) nav.navigateUp(sortedPrs.length);
+    if (key.downArrow) nav.navigateDown(sortedPrs.length);
 
     if (input === "r") {
       queryClient.invalidateQueries({ queryKey: ["prs"] });
@@ -232,23 +201,23 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
       });
     }
 
-    if (input === "m" && !isFiltering) {
+    if (input === "m" && !nav.isFiltering) {
       setIsAllMode(prev => !prev);
-      setSelectedIndex(0);
+      nav.setSelectedIndex(0);
     }
   });
 
   return {
-    selectedIndex,
-    setSelectedIndex,
+    selectedIndex: nav.selectedIndex,
+    setSelectedIndex: nav.setSelectedIndex,
     isAllMode,
     setIsAllMode,
-    filterQuery,
-    isFiltering,
-    setIsFiltering,
-    sortBy,
-    isSorting,
-    sortIndex,
+    filterQuery: nav.filterQuery,
+    isFiltering: nav.isFiltering,
+    setIsFiltering: nav.setIsFiltering,
+    sortBy: nav.sortType,
+    isSorting: nav.isSorting,
+    sortIndex: nav.sortIndex,
     sortOptions,
     prs,
     isLoading,
@@ -258,7 +227,7 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
     prMetrics,
     summary,
     activePR,
-    handleFilterChange,
+    handleFilterChange: nav.handleFilterChange,
     startIndex,
     WINDOW_SIZE,
     refetch: () => {

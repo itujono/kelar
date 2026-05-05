@@ -86,13 +86,24 @@ export interface BitbucketComment {
   };
 }
 
+let cachedAuthHeader: string | null = null;
+let cachedAuthSig: string | null = null;
+let cachedBaseUrl: string | null = null;
+let cachedBaseUrlSig: string | null = null;
+
 const getAuthHeader = () => {
   const { BITBUCKET_EMAIL, BITBUCKET_TOKEN } = getBitbucketConfig();
   if (!BITBUCKET_EMAIL || !BITBUCKET_TOKEN) {
     throw new Error("Bitbucket configuration is missing (EMAIL or TOKEN).");
   }
+  const sig = `${BITBUCKET_EMAIL}:${BITBUCKET_TOKEN}`;
+  if (cachedAuthHeader && cachedAuthSig === sig) {
+    return cachedAuthHeader;
+  }
   const credentials = Buffer.from(`${BITBUCKET_EMAIL}:${BITBUCKET_TOKEN}`).toString("base64");
-  return `Basic ${credentials}`;
+  cachedAuthHeader = `Basic ${credentials}`;
+  cachedAuthSig = sig;
+  return cachedAuthHeader;
 };
 
 const getBaseUrl = () => {
@@ -100,8 +111,20 @@ const getBaseUrl = () => {
   if (!BITBUCKET_WORKSPACE || !BITBUCKET_REPO_SLUG) {
     throw new Error("Bitbucket workspace or repository slug is missing.");
   }
-  return `https://api.bitbucket.org/2.0/repositories/${BITBUCKET_WORKSPACE}/${BITBUCKET_REPO_SLUG}`;
+  const sig = `${BITBUCKET_WORKSPACE}:${BITBUCKET_REPO_SLUG}`;
+  if (cachedBaseUrl && cachedBaseUrlSig === sig) {
+    return cachedBaseUrl;
+  }
+  cachedBaseUrl = `https://api.bitbucket.org/2.0/repositories/${BITBUCKET_WORKSPACE}/${BITBUCKET_REPO_SLUG}`;
+  cachedBaseUrlSig = sig;
+  return cachedBaseUrl;
 };
+
+const BB_HEADERS = { "Authorization": "" as string };
+
+function bbHeaders(): Record<string, string> {
+  return { "Authorization": getAuthHeader() };
+}
 
 export const fetchPRs = async (all = false): Promise<BitbucketPR[]> => {
   const { BITBUCKET_USERNAME } = getBitbucketConfig();
@@ -120,7 +143,7 @@ export const fetchPRs = async (all = false): Promise<BitbucketPR[]> => {
 
   while (nextUrl) {
     const response = await fetch(nextUrl, {
-      headers: { "Authorization": getAuthHeader() },
+      headers: bbHeaders(),
     });
 
     if (!response.ok) {
@@ -141,7 +164,7 @@ export const fetchPRs = async (all = false): Promise<BitbucketPR[]> => {
 export const fetchPRActivity = async (prId: number): Promise<BitbucketActivity[]> => {
   const baseUrl = getBaseUrl();
   const response = await fetch(`${baseUrl}/pullrequests/${prId}/activity`, {
-    headers: { "Authorization": getAuthHeader() },
+    headers: bbHeaders(),
   });
 
   if (!response.ok) {
@@ -156,7 +179,7 @@ export const fetchPRActivity = async (prId: number): Promise<BitbucketActivity[]
 export const fetchPRTasks = async (prId: number): Promise<BitbucketTask[]> => {
   const baseUrl = getBaseUrl();
   const response = await fetch(`${baseUrl}/pullrequests/${prId}/tasks`, {
-    headers: { "Authorization": getAuthHeader() },
+    headers: bbHeaders(),
   });
 
   if (!response.ok) return [];
@@ -168,7 +191,7 @@ export const fetchPRTasks = async (prId: number): Promise<BitbucketTask[]> => {
 export const fetchPRStatuses = async (prId: number): Promise<BitbucketStatus[]> => {
   const baseUrl = getBaseUrl();
   const response = await fetch(`${baseUrl}/pullrequests/${prId}/statuses`, {
-    headers: { "Authorization": getAuthHeader() },
+    headers: bbHeaders(),
   });
 
   if (!response.ok) return [];
@@ -178,7 +201,7 @@ export const fetchPRStatuses = async (prId: number): Promise<BitbucketStatus[]> 
 
 export const fetchMe = async (): Promise<BitbucketUser> => {
   const response = await fetch(`https://api.bitbucket.org/2.0/user`, {
-    headers: { "Authorization": getAuthHeader() },
+    headers: bbHeaders(),
   });
 
   if (!response.ok) {
@@ -194,7 +217,7 @@ export const fetchPRComments = async (prId: number): Promise<BitbucketComment[]>
   url.searchParams.append("fields", "values.*,values.parent.id");
 
   const response = await fetch(url.toString(), {
-    headers: { "Authorization": getAuthHeader() },
+    headers: bbHeaders(),
   });
 
   if (!response.ok) return [];

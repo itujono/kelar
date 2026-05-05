@@ -112,15 +112,29 @@ export interface JiraWorklog {
   author: JiraUser;
 }
 
+let cachedAuthHeader: string | null = null;
+let cachedAuthConfigSig: string | null = null;
+let cachedBaseUrl: string | null = null;
+let cachedBaseUrlSig: string | null = null;
+
+function getConfigSignature(email: string, token: string, domain: string): string {
+  return `${email}:${token}:${domain}`;
+}
+
 function getAuthHeader() {
   const config = getAppConfig();
   if (!config.JIRA_EMAIL || !config.JIRA_TOKEN) {
     throw new Error("Jira credentials not configured.");
   }
+  const sig = getConfigSignature(config.JIRA_EMAIL, config.JIRA_TOKEN, config.JIRA_DOMAIN || "");
+  if (cachedAuthHeader && cachedAuthConfigSig === sig) {
+    return cachedAuthHeader;
+  }
   const email = config.JIRA_EMAIL.trim();
   const token = config.JIRA_TOKEN.trim();
-  const auth = Buffer.from(`${email}:${token}`).toString("base64");
-  return `Basic ${auth}`;
+  cachedAuthHeader = `Basic ${Buffer.from(`${email}:${token}`).toString("base64")}`;
+  cachedAuthConfigSig = sig;
+  return cachedAuthHeader;
 }
 
 function getBaseUrl() {
@@ -129,17 +143,53 @@ function getBaseUrl() {
     throw new Error("Jira domain not configured.");
   }
   const domain = config.JIRA_DOMAIN.replace(/^https?:\/\//, '').replace(/\/$/, '').trim();
-  return `https://${domain}/rest/api/3`;
+  if (cachedBaseUrl && cachedBaseUrlSig === domain) {
+    return cachedBaseUrl;
+  }
+  cachedBaseUrl = `https://${domain}/rest/api/3`;
+  cachedBaseUrlSig = domain;
+  return cachedBaseUrl;
+}
+
+const JIRA_HEADERS = {
+  Authorization: "" as string,
+  Accept: "application/json",
+  "User-Agent": "KelarCLI/1.0.0",
+};
+
+function jiraHeaders(): Record<string, string> {
+  return { ...JIRA_HEADERS, Authorization: getAuthHeader() };
+}
+
+function assertObject(val: unknown, context: string): asserts val is Record<string, unknown> {
+  if (typeof val !== "object" || val === null || Array.isArray(val)) {
+    throw new Error(`Unexpected API response: expected object, got ${typeof val} (${context})`);
+  }
+}
+
+function validateJiraIssue(data: unknown): JiraIssue {
+  assertObject(data, "JiraIssue");
+  const fields = data.fields;
+  assertObject(fields, "JiraIssue.fields");
+  const status = fields.status;
+  assertObject(status, "JiraIssue.fields.status");
+  const statusCategory = status.statusCategory;
+  assertObject(statusCategory, "JiraIssue.fields.status.statusCategory");
+  return data as unknown as JiraIssue;
+}
+
+function validateJiraWorklog(data: unknown): JiraWorklog {
+  assertObject(data, "JiraWorklog");
+  if (typeof data.id !== "string" || typeof data.timeSpentSeconds !== "number") {
+    throw new Error("Unexpected worklog format from API");
+  }
+  return data as unknown as JiraWorklog;
 }
 
 export async function fetchIssueDetails(issueKey: string): Promise<JiraIssue> {
   const url = `${getBaseUrl()}/issue/${issueKey}`;
   const response = await fetch(url, {
-    headers: {
-      Authorization: getAuthHeader(),
-      Accept: "application/json",
-      "User-Agent": "KelarCLI/1.0.0",
-    },
+    headers: jiraHeaders(),
   });
 
   if (!response.ok) {
@@ -151,7 +201,8 @@ export async function fetchIssueDetails(issueKey: string): Promise<JiraIssue> {
     throw new Error(`Failed to fetch issue details (${response.status}): ${errorText}`);
   }
 
-  return response.json() as Promise<JiraIssue>;
+  const data = await response.json();
+  return validateJiraIssue(data);
 }
 
 /**
@@ -186,12 +237,7 @@ export async function postWorklog(issueKey: string, minutes: number, comment: st
 
   const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Authorization: getAuthHeader(),
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "User-Agent": "KelarCLI/1.0.0",
-    },
+    headers: { ...jiraHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 
@@ -203,9 +249,10 @@ Status: ${response.status}
 Response: ${errorText}`);
   }
 
-  const result = await response.json() as JiraWorklog;
+  const result = await response.json();
+  const worklog = validateJiraWorklog(result);
   clearTixCache();
-  return result;
+  return worklog;
 }
 
 /**
@@ -229,12 +276,7 @@ export async function searchIssues(jql: string, maxResults: number = 100): Promi
   const url = `${getBaseUrl()}/search/jql`;
   const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Authorization: getAuthHeader(),
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "User-Agent": "KelarCLI/1.0.0",
-    },
+    headers: { ...jiraHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify({
       jql,
       maxResults,
@@ -263,7 +305,7 @@ export async function searchIssues(jql: string, maxResults: number = 100): Promi
   }
 
   const data = await response.json() as { issues: JiraIssue[] };
-  const issues = data.issues || [];
+  const issues = (data.issues || []).map(validateJiraIssue);
 
   // Cache broadly
   dbOps.setConfig(CACHE_KEY, JSON.stringify(issues));
@@ -284,7 +326,7 @@ export async function fetchUsers(query: string = ""): Promise<JiraUser[]> {
   if (!query) {
     const cachedUsers = dbOps.getConfig(CACHE_KEY);
     const cachedTs = dbOps.getConfig(CACHE_TS_KEY);
-    
+
     if (cachedUsers && cachedTs) {
       const ts = parseInt(cachedTs, 10);
       if (Date.now() - ts < CACHE_DURATION) {
@@ -295,11 +337,7 @@ export async function fetchUsers(query: string = ""): Promise<JiraUser[]> {
 
   const url = `${getBaseUrl()}/users/search?query=${encodeURIComponent(query)}&maxResults=300`;
   const response = await fetch(url, {
-    headers: {
-      Authorization: getAuthHeader(),
-      Accept: "application/json",
-      "User-Agent": "KelarCLI/1.0.0",
-    },
+    headers: jiraHeaders(),
   });
 
   if (!response.ok) {
@@ -345,11 +383,7 @@ export async function fetchUsers(query: string = ""): Promise<JiraUser[]> {
 export async function fetchTransitions(issueKey: string): Promise<JiraTransition[]> {
   const url = `${getBaseUrl()}/issue/${issueKey}/transitions`;
   const response = await fetch(url, {
-    headers: {
-      Authorization: getAuthHeader(),
-      Accept: "application/json",
-      "User-Agent": "KelarCLI/1.0.0",
-    },
+    headers: jiraHeaders(),
   });
 
   if (!response.ok) {
@@ -368,12 +402,7 @@ export async function transitionIssue(issueKey: string, transitionId: string): P
   const url = `${getBaseUrl()}/issue/${issueKey}/transitions`;
   const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Authorization: getAuthHeader(),
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "User-Agent": "KelarCLI/1.0.0",
-    },
+    headers: { ...jiraHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify({
       transition: { id: transitionId }
     }),
@@ -394,12 +423,7 @@ export async function updateIssueEstimate(issueKey: string, estimateSeconds: num
   const url = `${getBaseUrl()}/issue/${issueKey}`;
   const response = await fetch(url, {
     method: "PUT",
-    headers: {
-      Authorization: getAuthHeader(),
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "User-Agent": "KelarCLI/1.0.0",
-    },
+    headers: { ...jiraHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify({
       fields: {
         timetracking: {
@@ -426,13 +450,8 @@ export async function fetchActivityCountToday(): Promise<number> {
   const url = `${getBaseUrl()}/search`;
   const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Authorization: getAuthHeader(),
-      "Content-Type": "application/json",
-      "User-Agent": "KelarCLI/1.0.0",
-    },
+    headers: { ...jiraHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify({
-      jql,
       maxResults: 100,
       fields: ["key"]
     })
@@ -458,11 +477,7 @@ export async function fetchIssueWorklogs(issueIdOrKey: string): Promise<JiraWork
   while (true) {
     const url = `${getBaseUrl()}/issue/${issueIdOrKey}/worklog?startAt=${startAt}&maxResults=${maxResults}`;
     const response = await fetch(url, {
-      headers: {
-        Authorization: getAuthHeader(),
-        Accept: "application/json",
-        "User-Agent": "KelarCLI/1.0.0",
-      },
+      headers: jiraHeaders(),
     });
 
     if (!response.ok) {
