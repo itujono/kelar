@@ -5,41 +5,33 @@ import { TixDetailPane } from "../components/tix/TixDetailPane";
 import { formatMinutes } from "../utils";
 import { TixControls } from "../components/tix/TixControls";
 import { TixModal } from "../components/tix/TixModal";
-import { TixProvider, useTixContext } from "../contexts/TixContext";
 import { UserSelection } from "../components/tix/UserSelection";
+import { useTixView } from "../hooks/useTixView";
 
 interface TixViewProps {
   isPeerMode?: boolean;
 }
 
 export function TixView({ isPeerMode = false }: TixViewProps) {
-  return (
-    <TixProvider isPeerMode={isPeerMode}>
-      <TixViewContent />
-    </TixProvider>
-  );
-}
+  const tix = useTixView(isPeerMode);
 
-function TixViewContent() {
-  const { handleUserSearchChange, ...data } = useTixContext();
-
-  if (data.isUserSelecting) {
+  if (tix.isUserSelecting) {
     return (
       <UserSelection
-        userSearchQuery={data.userSearchQuery}
-        onUserSearchChange={handleUserSearchChange}
-        isLoadingUsers={data.isLoadingUsers}
-        filteredUsers={data.filteredUsers}
-        selectedIndex={data.selectedIndex}
+        userSearchQuery={tix.userSearchQuery}
+        onUserSearchChange={tix.handleUserSearchChange}
+        isLoadingUsers={tix.isLoadingUsers}
+        filteredUsers={tix.filteredUsers}
+        selectedIndex={tix.selectedIndex}
       />
     );
   }
 
-  if (data.isLoadingTickets) {
+  if (tix.isLoadingTickets) {
     return (
       <Box padding={1}>
         <Spinner type="dots" />
-        <Text italic> Fetching tickets for {data.accountId}...</Text>
+        <Text italic> Fetching tickets for {tix.accountId}...</Text>
       </Box>
     );
   }
@@ -49,39 +41,49 @@ function TixViewContent() {
       <Box marginBottom={1}>
         <Text bold color="cyan">Jira Yuuuk</Text>
         <Text color="dim"> | Sort: </Text>
-        <Text color="yellow">{data.sortOptions.find(o => o.value === data.sortType)?.label || data.sortType}</Text>
-        {data.selectedUserName && (
+        <Text color="yellow">{tix.sortOptions.find(o => o.value === tix.sortType)?.label || tix.sortType}</Text>
+        {tix.selectedUserName && (
           <>
             <Text color="dim"> | User: </Text>
-            <Text color="magenta" bold>{data.selectedUserName}</Text>
+            <Text color="magenta" bold>{tix.selectedUserName}</Text>
           </>
         )}
         <Text color="dim"> | Daily Context: </Text>
-        <Text color="cyan" bold>{data.contextScore ?? "-"}</Text>
+        <Text color="cyan" bold>{tix.contextScore ?? "-"}</Text>
       </Box>
 
       <Box flexDirection="row" minHeight={20}>
         <Box flexGrow={1} marginRight={2}>
-          <TixTable tickets={data.sortedTickets} selectedIndex={data.selectedIndex} />
+          <TixTable tickets={tix.sortedTickets} selectedIndex={tix.selectedIndex} />
         </Box>
-        {data.activeTicket && (
-          <TixDetailPane ticket={data.activeTicket} />
+        {tix.activeTicket && (
+          <TixDetailPane ticket={tix.activeTicket} />
         )}
       </Box>
 
-      <TixControls />
+      <TixControls
+        isSorting={tix.isSorting}
+        sortOptions={tix.sortOptions}
+        sortIndex={tix.sortIndex}
+        sortType={tix.sortType}
+        isFiltering={tix.isFiltering}
+        filterQuery={tix.filterQuery}
+        setFilterQuery={tix.setFilterQuery}
+        setIsFiltering={tix.setIsFiltering}
+        sortedTickets={tix.sortedTickets}
+      />
 
-      {data.accountId && (
+      {tix.accountId && (
         <Box marginTop={1} borderStyle="single" borderColor="dim" paddingX={1} flexDirection="column">
           <Box>
             <Text bold>Monthly Worklogs: </Text>
-            <Text color="yellow">{formatMinutes(data.totalMinutesAll)}</Text>
-            <Text color="dim"> ({data.totalMinutesAll}m) | </Text>
-            <Text color="magenta" bold>{((data.totalMinutesAll / (data.targetHours * 60)) * 100).toFixed(1)}%</Text>
-            <Text color="dim"> of {data.targetHours}h goal | </Text>
-            <Text color="yellow" bold>{data.daysRemaining}</Text>
+            <Text color="yellow">{formatMinutes(tix.totalMinutesAll)}</Text>
+            <Text color="dim"> ({tix.totalMinutesAll}m) | </Text>
+            <Text color="magenta" bold>{((tix.totalMinutesAll / (tix.targetHours * 60)) * 100).toFixed(1)}%</Text>
+            <Text color="dim"> of {tix.targetHours}h goal | </Text>
+            <Text color="yellow" bold>{tix.daysRemaining}</Text>
             <Text color="dim"> days left</Text>
-            {data.monthlyLogs === undefined && (
+            {tix.monthlyLogs === undefined && (
               <Box marginLeft={2}>
                 <Spinner type="dots" />
                 <Text color="dim" italic> Calculating totals...</Text>
@@ -90,17 +92,34 @@ function TixViewContent() {
           </Box>
           <Box marginTop={1}>
             <Text color="magenta">
-              {"█".repeat(Math.min(30, Math.floor((data.totalMinutesAll / (data.targetHours * 60)) * 30)))}
+              {"█".repeat(Math.min(30, Math.floor((tix.totalMinutesAll / (tix.targetHours * 60)) * 30)))}
               <Text color="dim">
-                {"░".repeat(Math.max(0, 30 - Math.floor((data.totalMinutesAll / (data.targetHours * 60)) * 30)))}
+                {"░".repeat(Math.max(0, 30 - Math.floor((tix.totalMinutesAll / (tix.targetHours * 60)) * 30)))}
               </Text>
             </Text>
           </Box>
         </Box>
       )}
 
-      {/* Modals */}
-      <TixModal />
+      <TixModal
+        activeModal={tix.activeModal}
+        activeTicket={tix.activeTicket ?? null}
+        logTime={tix.logTime}
+        logComment={tix.logComment}
+        logFocus={tix.logFocus}
+        setLogTime={tix.setLogTime}
+        setLogComment={tix.setLogComment}
+        setLogFocus={tix.setLogFocus}
+        handleLogSubmit={tix.handleLogSubmit}
+        logMutation={tix.logMutation}
+        isLoadingTransitions={tix.isLoadingTransitions}
+        isConfirmingMove={tix.isConfirmingMove}
+        transitions={tix.transitions}
+        transitionIndex={tix.transitionIndex}
+        estimateValue={tix.estimateValue}
+        setEstimateValue={tix.setEstimateValue}
+        handleEstimateSubmit={tix.handleEstimateSubmit}
+      />
     </Box>
   );
 }

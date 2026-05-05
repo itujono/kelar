@@ -52,12 +52,12 @@ export const LogTable: React.FC<LogTableProps> = ({
   const progressBlocks = Math.floor(progressRatio * 30);
 
   const data = visibleLogs.map(log => ({
-    Date: format(new Date(log.created_at), "dd MMM"),
+        Date: format(new Date(log.created_at), "dd MMM"),
     Identifier: log.identifier,
     Label: log.label || "",
     Type: log.is_jira ? "Jira" : "Personal",
     Time: formatMinutes(log.minutes),
-    _raw: log
+    isJira: log.is_jira
   }));
 
   return (
@@ -83,10 +83,9 @@ export const LogTable: React.FC<LogTableProps> = ({
           </Box>
         ) : undefined}
         renderCell={(col, val, row, rowIndex) => {
-          const log = row._raw as LogDbRow;
           const isSelected = rowIndex === (selectedIndex - startIndex);
 
-          if (!log.is_jira && (col === "Identifier" || col === "Type")) {
+          if (!row.isJira && (col === "Identifier" || col === "Type")) {
             return (
               <Text color={isSelected ? "black" : "green"}>
                 {val as React.ReactNode}

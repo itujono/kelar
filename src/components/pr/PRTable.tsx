@@ -82,7 +82,9 @@ export const PRTable: React.FC<PRTableProps> = ({
           created: formatRelativeTime(new Date(pr.created_on)),
           updated: formatRelativeTime(new Date(pr.updated_on)),
           status: changesRequested ? "✗ Req" : (approvals > 0 ? `✓ ${approvals}` : `○ ${approvals}`),
-          _raw: { pr, myReviewColor, approvals, changesRequested }
+          myReviewColor,
+          approvals,
+          changesRequested
         };
       })}
       columns={[
@@ -100,7 +102,7 @@ export const PRTable: React.FC<PRTableProps> = ({
         <Text color="dim italic">  ↓ {prs.length - (startIndex + 18)} more pull requests...</Text>
       ) : undefined}
       renderCell={(col, val, row, rowIndex) => {
-        const { myReviewColor, approvals, changesRequested } = row._raw;
+        const { myReviewColor, approvals, changesRequested } = row;
         const isSelected = (rowIndex + startIndex) === selectedIndex;
 
         if (col === "id" || col === "created" || col === "updated") {

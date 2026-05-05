@@ -3,6 +3,7 @@ import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import { useQuery } from "@tanstack/react-query";
 import { getBitbucketConfig } from "../../config";
+import { formatDuration } from "../../utils";
 import {
   type BitbucketPR,
   type BitbucketUser,
@@ -17,18 +18,6 @@ import {
 interface PRDetailPaneProps {
   pr: BitbucketPR;
 }
-
-const formatDuration = (ms: number | null): string => {
-  if (ms === null) return "N/A";
-  const seconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  if (days > 0) return `${days}d ${hours % 24}h`;
-  if (hours > 0) return `${hours}h ${minutes % 60}m`;
-  return `${minutes}m`;
-};
 
 export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
   const { data: activity, isLoading: isLoadingActivity } = useQuery({
@@ -73,12 +62,12 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
         <Text bold color="yellow">Velocity Metrics</Text>
         <Box paddingLeft={1}>
           <Text color="dim">Lead Time: </Text>
-          <Text>{formatDuration(velocity?.leadTime ?? null)}</Text>
+          <Text>{formatDuration(velocity?.leadTime ? Math.floor(velocity.leadTime / 1000) : null, { showDays: true, nullLabel: "N/A" })}</Text>
         </Box>
         <Box paddingLeft={1}>
           <Text color="dim">Pick-up Latency: </Text>
           <Text color={velocity?.pickupLatency && velocity.pickupLatency > 1000 * 60 * 60 * 4 ? "red" : "green"}>
-            {formatDuration(velocity?.pickupLatency ?? null)}
+            {formatDuration(velocity?.pickupLatency ? Math.floor(velocity.pickupLatency / 1000) : null, { showDays: true, nullLabel: "N/A" })}
           </Text>
         </Box>
       </Box>

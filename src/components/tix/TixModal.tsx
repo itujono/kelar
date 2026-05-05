@@ -2,24 +2,61 @@ import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
 import { extractAdfText } from "../../utils";
-import { useTixContext } from "../../contexts/TixContext";
+import type { JiraIssue, JiraTransition } from "../../jira";
+import type { UseMutationResult } from "@tanstack/react-query";
 
-export function TixModal() {
-  const { setLogTime, setLogComment, setLogFocus, handleLogSubmit, setEstimateValue, handleEstimateSubmit, ...data } = useTixContext();
+interface TixModalProps {
+  activeModal: "log" | "move" | "estimate" | "view" | null;
+  activeTicket: JiraIssue | null;
+  logTime: string;
+  logComment: string;
+  logFocus: "time" | "comment";
+  setLogTime: (val: string) => void;
+  setLogComment: (val: string) => void;
+  setLogFocus: (val: "time" | "comment") => void;
+  handleLogSubmit: () => void;
+  logMutation: UseMutationResult<unknown, Error, { key: string; minutes: number; comment: string }, unknown>;
+  isLoadingTransitions: boolean;
+  isConfirmingMove: boolean;
+  transitions: JiraTransition[] | undefined;
+  transitionIndex: number;
+  estimateValue: string;
+  setEstimateValue: (val: string) => void;
+  handleEstimateSubmit: () => void;
+}
 
-  if (!data.activeModal || !data.activeTicket) return null;
+export function TixModal({
+  activeModal,
+  activeTicket,
+  logTime,
+  logComment,
+  logFocus,
+  setLogTime,
+  setLogComment,
+  setLogFocus,
+  handleLogSubmit,
+  logMutation,
+  isLoadingTransitions,
+  isConfirmingMove,
+  transitions,
+  transitionIndex,
+  estimateValue,
+  setEstimateValue,
+  handleEstimateSubmit
+}: TixModalProps) {
+  if (!activeModal || !activeTicket) return null;
 
-  if (data.activeModal === "log") {
+  if (activeModal === "log") {
     return (
       <Box borderStyle="double" borderColor="magenta" padding={1} flexDirection="column" position="absolute" marginTop={5} marginLeft={20} backgroundColor="black">
-        <Text bold color="magenta">Log Work for {data.activeTicket.key}</Text>
+        <Text bold color="magenta">Log Work for {activeTicket.key}</Text>
         <Box marginTop={1}>
-          <Text color={data.logFocus === "time" ? "white" : "dim"}>Time (e.g. 1h 30m): </Text>
-          <TextInput value={data.logTime} onChange={setLogTime} focus={data.logFocus === "time"} onSubmit={() => setLogFocus("comment")} />
+          <Text color={logFocus === "time" ? "white" : "dim"}>Time (e.g. 1h 30m): </Text>
+          <TextInput value={logTime} onChange={setLogTime} focus={logFocus === "time"} onSubmit={() => setLogFocus("comment")} />
         </Box>
         <Box>
-          <Text color={data.logFocus === "comment" ? "white" : "dim"}>Comment: </Text>
-          <TextInput value={data.logComment} onChange={setLogComment} focus={data.logFocus === "comment"} onSubmit={handleLogSubmit} />
+          <Text color={logFocus === "comment" ? "white" : "dim"}>Comment: </Text>
+          <TextInput value={logComment} onChange={setLogComment} focus={logFocus === "comment"} onSubmit={handleLogSubmit} />
         </Box>
         <Box marginTop={1} flexDirection="column">
           <Text color="dim">Press </Text>
@@ -29,25 +66,25 @@ export function TixModal() {
             <Text bold color="cyan">Esc</Text><Text color="dim"> to cancel</Text>
           </Box>
         </Box>
-        {data.logMutation.isPending && <Text italic color="yellow">Posting...</Text>}
+        {logMutation.isPending && <Text italic color="yellow">Posting...</Text>}
       </Box>
     );
   }
 
-  if (data.activeModal === "move") {
+  if (activeModal === "move") {
     return (
       <Box borderStyle="double" borderColor="yellow" padding={1} flexDirection="column" position="absolute" marginTop={5} marginLeft={20} backgroundColor="black">
-        <Text bold color="yellow">Transition {data.activeTicket.key}</Text>
-        {data.isLoadingTransitions ? (
+        <Text bold color="yellow">Transition {activeTicket.key}</Text>
+        {isLoadingTransitions ? (
           <Box marginTop={1}><Spinner type="dots" /><Text> Fetching options...</Text></Box>
-        ) : data.isConfirmingMove ? (
+        ) : isConfirmingMove ? (
           <Box flexDirection="column" marginTop={1}>
             <Text>You're about to move ticket </Text>
-            <Text bold color="cyan">{data.activeTicket.key}</Text>
+            <Text bold color="cyan">{activeTicket.key}</Text>
             <Box>
-              <Text color="dim">{data.activeTicket.fields.status.name}</Text>
+              <Text color="dim">{activeTicket.fields.status.name}</Text>
               <Text color="yellow"> → </Text>
-              <Text bold color="green">{data.transitions?.[data.transitionIndex]?.to.name}</Text>
+              <Text bold color="green">{transitions?.[transitionIndex]?.to.name}</Text>
             </Box>
             <Box marginTop={1}>
               <Text italic color="yellow">Make sure you're aware of what this transition entails.</Text>
@@ -60,9 +97,9 @@ export function TixModal() {
         ) : (
           <>
             <Box flexDirection="column" marginTop={1}>
-              {data.transitions?.map((t, i) => (
-                <Box key={t.id} backgroundColor={i === data.transitionIndex ? "white" : undefined} paddingX={1}>
-                  <Text color={i === data.transitionIndex ? "black" : undefined}>{t.name} (→ {t.to.name})</Text>
+              {transitions?.map((t, i) => (
+                <Box key={t.id} backgroundColor={i === transitionIndex ? "white" : undefined} paddingX={1}>
+                  <Text color={i === transitionIndex ? "black" : undefined}>{t.name} (→ {t.to.name})</Text>
                 </Box>
               ))}
             </Box>
@@ -76,14 +113,14 @@ export function TixModal() {
     );
   }
 
-  if (data.activeModal === "estimate") {
+  if (activeModal === "estimate") {
     return (
       <Box borderStyle="double" borderColor="cyan" padding={1} flexDirection="column" position="absolute" marginTop={5} marginLeft={20} backgroundColor="black">
-        <Text bold color="cyan">Update Estimate for {data.activeTicket.key}</Text>
+        <Text bold color="cyan">Update Estimate for {activeTicket.key}</Text>
         <Box marginTop={1}>
           <Text>New Estimate (e.g. 4h): </Text>
           <TextInput
-            value={data.estimateValue}
+            value={estimateValue}
             onChange={setEstimateValue}
             onSubmit={handleEstimateSubmit}
           />
@@ -95,16 +132,16 @@ export function TixModal() {
     );
   }
 
-  if (data.activeModal === "view") {
+  if (activeModal === "view") {
     return (
       <Box borderStyle="double" borderColor="white" padding={1} flexDirection="column" position="absolute" marginTop={2} marginLeft={5} width={100} height={25} backgroundColor="black">
         <Box marginBottom={1} borderStyle="single" borderTop={false} borderLeft={false} borderRight={false} borderColor="dim" paddingBottom={1}>
-          <Text bold color="cyan">[{data.activeTicket.key}] </Text>
-          <Text bold color="white">{data.activeTicket.fields.summary}</Text>
+          <Text bold color="cyan">[{activeTicket.key}] </Text>
+          <Text bold color="white">{activeTicket.fields.summary}</Text>
         </Box>
         <Box flexGrow={1} flexDirection="column">
           <Text color="white">
-            {extractAdfText(data.activeTicket.fields.description) || <Text italic color="dim">No description provided.</Text>}
+            {extractAdfText(activeTicket.fields.description) || <Text italic color="dim">No description provided.</Text>}
           </Text>
         </Box>
         <Box marginTop={1} paddingTop={1} borderStyle="single" borderBottom={false} borderLeft={false} borderRight={false} borderColor="dim">

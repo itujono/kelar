@@ -1,3 +1,4 @@
+import React from "react";
 import { Box, Text } from "ink";
 import { format } from "date-fns";
 import { type LogDbRow } from "../../db";
@@ -10,11 +11,15 @@ interface LogDetailPaneProps {
 
 export const LogDetailPane: React.FC<LogDetailPaneProps> = ({ log, allLogs }) => {
   // Find all logs for the same identifier (ticket key or personal log label)
-  const identifierLogs = allLogs
-    .filter(l => l.identifier === log.identifier)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const identifierLogs = React.useMemo(() => {
+    return allLogs
+      .filter(l => l.identifier === log.identifier)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [allLogs, log.identifier]);
 
-  const totalMinutes = identifierLogs.reduce((sum, l) => sum + l.minutes, 0);
+  const totalMinutes = React.useMemo(() =>
+    identifierLogs.reduce((sum, l) => sum + l.minutes, 0),
+  [identifierLogs]);
 
   return (
     <Box

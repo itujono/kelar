@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { formatRelativeTime, isZombieTicket } from "../../utils";
+import { formatRelativeTime, isZombieTicket, formatDuration } from "../../utils";
 import { type JiraIssue } from "../../jira";
 import { Table } from "../Table";
 import { useWindowedSlice } from "../../hooks/useWindowedSlice";
@@ -10,13 +10,6 @@ interface TixTableProps {
   selectedIndex: number;
 }
 
-const formatSeconds = (seconds: number | null): string => {
-  if (!seconds) return "-";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-};
 
 const getStatusColor = (categoryKey: string, statusName: string): string => {
   if (statusName.toLowerCase().includes("review")) return "magenta";
@@ -83,8 +76,8 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
           Title: t.fields.summary,
           Status: t.fields.status.name,
           Assignee: t.fields.assignee?.displayName?.split(" ")[0] || "Unassigned",
-          Est: formatSeconds(t.fields.timeoriginalestimate),
-          Log: formatSeconds(t.fields.timespent),
+          Est: formatDuration(t.fields.timeoriginalestimate),
+          Log: formatDuration(t.fields.timespent),
           Created: formatRelativeTime(new Date(t.fields.created)),
           Updated: formatRelativeTime(new Date(t.fields.updated)),
           _statusCategoryKey: t.fields.status.statusCategory.key,

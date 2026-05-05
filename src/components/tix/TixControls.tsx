@@ -1,21 +1,31 @@
 import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
-import { useTixContext } from "../../contexts/TixContext";
 import { SelectionMenu } from "../SelectionMenu";
+import type { JiraIssue } from "../../jira";
 
-export function TixControls() {
-  const {
-    isSorting,
-    sortOptions,
-    sortIndex,
-    sortType,
-    isFiltering,
-    filterQuery,
-    setFilterQuery,
-    setIsFiltering,
-    sortedTickets
-  } = useTixContext();
+interface TixControlsProps {
+  isSorting: boolean;
+  sortOptions: { label: string; value: string }[];
+  sortIndex: number;
+  sortType: string;
+  isFiltering: boolean;
+  filterQuery: string;
+  setFilterQuery: (val: string) => void;
+  setIsFiltering: (val: boolean) => void;
+  sortedTickets: JiraIssue[];
+}
 
+export function TixControls({
+  isSorting,
+  sortOptions,
+  sortIndex,
+  sortType,
+  isFiltering,
+  filterQuery,
+  setFilterQuery,
+  setIsFiltering,
+  sortedTickets
+}: TixControlsProps) {
   return (
     <Box marginTop={1} flexDirection="column">
       {isSorting ? (

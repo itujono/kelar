@@ -54,18 +54,28 @@ export function roundToNearest5(minutes: number): number {
   return Math.ceil(minutes / 5) * 5;
 }
 
+export interface FormatDurationOptions {
+  showDays?: boolean;
+  nullLabel?: string;
+}
+
+export function formatDuration(totalSeconds: number | null, opts?: FormatDurationOptions): string {
+  if (totalSeconds === null || totalSeconds === undefined) return opts?.nullLabel ?? "-";
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+  if (opts?.showDays && days > 0) return `${days}d ${hours}h`;
+  if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h`;
+  return `${minutes}m`;
+}
+
 /**
- * Formats minutes back to a duration string if needed (optional)
+ * Formats minutes back to a duration string (thin wrapper around formatDuration)
  */
 export function formatMinutes(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-
-  const parts = [];
-  if (h > 0) parts.push(`${h}h`);
-  if (m > 0 || h === 0) parts.push(`${m}m`);
-
-  return parts.join(' ');
+  return formatDuration(minutes * 60);
 }
 
 /**
@@ -121,10 +131,10 @@ export function extractAdfText(doc: JiraAdfDoc | string | null | undefined): str
  */
 export function isZombieTicket(t: JiraIssue): boolean {
   if (!t) return false;
-  
+
   const status = t.fields.status.name.toLowerCase();
   const category = t.fields.status.statusCategory.key;
-  
+
   const isInProgress = category === "indeterminate";
   const isDone = category === "done";
   const isWaiting = status.includes("review") || status.includes("qa") || status.includes("test");
@@ -138,7 +148,7 @@ export function isZombieTicket(t: JiraIssue): boolean {
 
   const lastComment = comments[comments.length - 1];
   const lastCommentDate = lastComment ? new Date(lastComment.created).getTime() : 0;
-    
+
   const lastWorklog = worklogs[worklogs.length - 1];
   const lastWorklogDate = lastWorklog ? new Date(lastWorklog.started).getTime() : 0;
 
