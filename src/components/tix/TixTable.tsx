@@ -41,6 +41,8 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
     Updated: 10,
   };
 
+  const { visibleItems: visibleTickets, startIndex } = useWindowedSlice(tickets, selectedIndex, 18);
+
   if (tickets.length === 0) {
     return (
       <Box padding={1}>
@@ -64,8 +66,6 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
   );
 
   const zombies = tickets.filter(isZombieTicket).length;
-
-  const { visibleItems: visibleTickets, startIndex } = useWindowedSlice(tickets, selectedIndex, 18);
 
   return (
     <Box flexDirection="column" flexGrow={1} flexShrink={1}>

@@ -36,6 +36,12 @@ export const LogTable: React.FC<LogTableProps> = ({
     return `No logs found for this ${period} in Jira.`;
   };
 
+  const { visibleItems: visibleLogs, startIndex } = useWindowedSlice(logs, selectedIndex, 18);
+
+  const progressRatio = totalMinutes / (targetHours * 60);
+  const progressPct = (progressRatio * 100).toFixed(1);
+  const progressBlocks = Math.floor(progressRatio * 30);
+
   if (logs.length === 0) {
     if (isLoading) return null;
     return (
@@ -44,12 +50,6 @@ export const LogTable: React.FC<LogTableProps> = ({
       </Box>
     );
   }
-
-  const { visibleItems: visibleLogs, startIndex } = useWindowedSlice(logs, selectedIndex, 18);
-
-  const progressRatio = totalMinutes / (targetHours * 60);
-  const progressPct = (progressRatio * 100).toFixed(1);
-  const progressBlocks = Math.floor(progressRatio * 30);
 
   const data = visibleLogs.map(log => ({
         Date: format(new Date(log.created_at), "dd MMM"),
