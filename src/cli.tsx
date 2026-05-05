@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
-import { render } from "ink";
+import React from "react";
+import { render, useApp } from "ink";
 import { Command } from "commander";
 import { LogNew } from "./commands/LogNew";
 import { LogView } from "./commands/LogView";
@@ -19,6 +20,17 @@ const GlobalProviders: React.FC<{ children: React.ReactNode }> = ({ children }) 
   </QueryClientProvider>
 );
 
+function ExitMessage({ children, code = 0 }: { children: React.ReactNode; code?: number }) {
+  const { exit } = useApp();
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      process.exitCode = code;
+      exit();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
+  return <Box padding={1}>{children}</Box>;
+}
 
 const program = new Command();
 
@@ -96,30 +108,23 @@ config
   .description("Update a configuration value")
   .argument("<key>", "Config key (JIRA_DOMAIN, JIRA_EMAIL, JIRA_TOKEN, JIRA_ACCOUNT_ID, PERSONAL_TICKET_ID, MONTHLY_TARGET_HOURS, LAST_CALCULATION_DAY)")
   .argument("<value>", "New value")
-  .action((key, value) => {
+  .action(async (key, value) => {
     const upperKey = key.toUpperCase() as ConfigKey;
     if (CONFIG_KEYS[upperKey]) {
       setAppConfig(upperKey, value);
-      const { unmount } = render(
-        <Box padding={1}>
+      const { waitUntilExit } = render(
+        <ExitMessage>
           <Text color="green">✅ Updated {upperKey} successfully!</Text>
-        </Box>
+        </ExitMessage>
       );
-      // Give it a tiny bit of time to render then unmount clean
-      setTimeout(() => {
-        unmount();
-        process.exit(0);
-      }, 50);
+      await waitUntilExit();
     } else {
-      const { unmount } = render(
-        <Box padding={1}>
+      const { waitUntilExit } = render(
+        <ExitMessage code={1}>
           <Text color="red">❌ Invalid config key: {key}</Text>
-        </Box>
+        </ExitMessage>
       );
-      setTimeout(() => {
-        unmount();
-        process.exit(1);
-      }, 50);
+      await waitUntilExit();
     }
   });
 
@@ -148,25 +153,25 @@ prConfig
   .alias("view")
   .description("View Bitbucket configuration")
   .action(async () => {
-    const config = getBitbucketConfig();
-    const { unmount } = render(
-      <Box padding={1} flexDirection="column">
-        <Text bold underline color="cyan">Bitbucket Configuration</Text>
-        {Object.entries(config).map(([key, value]) => (
-          <Box key={key} marginTop={1}>
-            <Box width={25}>
-              <Text bold>{key}: </Text>
-            </Box>
-            <Text color={value ? "white" : "dim"}>{value || "Not Set"}</Text>
+    const prConf = getBitbucketConfig();
+    const { waitUntilExit } = render(
+      <GlobalProviders>
+        <ExitMessage>
+          <Box flexDirection="column">
+            <Text bold underline color="cyan">Bitbucket Configuration</Text>
+            {Object.entries(prConf).map(([k, val]) => (
+              <Box key={k} marginTop={1}>
+                <Box width={25}>
+                  <Text bold>{k}: </Text>
+                </Box>
+                <Text color={val ? "white" : "dim"}>{val || "Not Set"}</Text>
+              </Box>
+            ))}
           </Box>
-        ))}
-
-      </Box>
+        </ExitMessage>
+      </GlobalProviders>
     );
-    setTimeout(() => {
-      unmount();
-      process.exit(0);
-    }, 50);
+    await waitUntilExit();
   });
 
 prConfig
@@ -174,29 +179,23 @@ prConfig
   .description("Update a Bitbucket configuration value")
   .argument("<key>", "Config key (BITBUCKET_EMAIL, BITBUCKET_USERNAME, BITBUCKET_TOKEN, BITBUCKET_WORKSPACE, BITBUCKET_REPO_SLUG)")
   .argument("<value>", "New value")
-  .action((key, value) => {
+  .action(async (key, value) => {
     const upperKey = key.toUpperCase() as BitbucketConfigKey;
     if (BITBUCKET_CONFIG_KEYS[upperKey]) {
       setAppConfig(upperKey, value);
-      const { unmount } = render(
-        <Box padding={1}>
+      const { waitUntilExit } = render(
+        <ExitMessage>
           <Text color="green">✅ Updated Bitbucket {upperKey} successfully!</Text>
-        </Box>
+        </ExitMessage>
       );
-      setTimeout(() => {
-        unmount();
-        process.exit(0);
-      }, 50);
+      await waitUntilExit();
     } else {
-      const { unmount } = render(
-        <Box padding={1}>
+      const { waitUntilExit } = render(
+        <ExitMessage code={1}>
           <Text color="red">❌ Invalid Bitbucket config key: {key}</Text>
-        </Box>
+        </ExitMessage>
       );
-      setTimeout(() => {
-        unmount();
-        process.exit(1);
-      }, 50);
+      await waitUntilExit();
     }
   });
 
@@ -217,4 +216,3 @@ tix
   });
 
 program.parse(process.argv);
-

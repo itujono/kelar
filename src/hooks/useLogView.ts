@@ -10,8 +10,6 @@ export type SortType = "longest" | "shortest" | "newest" | "oldest";
 export type PeriodType = "day" | "week" | "month";
 export type ViewStatus = "IDLE" | "SYNCING" | "SUCCESS" | "ERROR";
 
-const CACHE_THRESHOLD_MINUTES = 5;
-
 export function useLogView(period: PeriodType, sortBy: SortType) {
   const { exit } = useApp();
   // Config is read once on mount. Changes made while the TUI is running
@@ -72,19 +70,6 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     const lastSyncKey = `LAST_SYNC_${currentPeriod.toUpperCase()}`;
 
     try {
-      const lastSyncStr = dbOps.getConfig(lastSyncKey);
-      if (lastSyncStr) {
-        const lastSync = new Date(lastSyncStr);
-        const ageInMinutes = (new Date().getTime() - lastSync.getTime()) / (1000 * 60);
-
-        if (ageInMinutes < CACHE_THRESHOLD_MINUTES) {
-          const cachedLogs = dbOps.getLogs(sinceDate.toISOString());
-          setLogs(cachedLogs);
-          setStatus("SUCCESS");
-          return;
-        }
-      }
-
       setStatus("SYNCING");
       const jqlDate = format(sinceDate, "yyyy-MM-dd");
       const jql = `worklogAuthor = currentUser() AND worklogDate >= "${jqlDate}"`;

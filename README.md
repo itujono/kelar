@@ -178,9 +178,10 @@ kelar tix list --peer
 
 ## Data Storage & Security
 
-- All worklogs and configuration (including your tokens) are stored in `~/.kelar/kelar.db`.
+- All worklogs and configuration (including your tokens) are stored in **plaintext** in `~/.kelar/kelar.db`.
 - Data is stored outside the project folder, so you can safely push code without leaking secrets.
 - No data is shared outside of your machine and your designated Atlassian domains.
+- **Warning**: Jira and Bitbucket API tokens are stored without encryption. Anyone with filesystem access to `~/.kelar/kelar.db` can read them. Ensure your machine is properly secured.
 
 ### Browsing the Database
 Since Kelar uses a standard SQLite database, you can manually inspect or query your data using any SQLite-compatible tool:
@@ -188,6 +189,26 @@ Since Kelar uses a standard SQLite database, you can manually inspect or query y
 - **GUI**: [DB Browser for SQLite](https://sqlitebrowser.org/), [Beekeeper Studio](https://www.beekeeperstudio.io/), or [DBeaver](https://dbeaver.io/).
 
 ## Technical Details
+
+### Development
+
+```bash
+# Run the CLI in development mode
+bun run dev
+
+# Or pass commands directly
+kelar log list month
+kelar pr list --all
+kelar tix list --peer
+
+# Run tests
+bun test
+
+# Type check
+bun run typecheck
+```
+
+### Stack
 
 - Bun
 - Ink-based flexbox layouts

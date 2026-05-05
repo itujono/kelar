@@ -57,20 +57,6 @@ export interface BitbucketActivity {
   };
 }
 
-export interface BitbucketTask {
-  id: number;
-  content: { raw: string };
-  state: "OPEN" | "RESOLVED";
-  creator: BitbucketUser;
-}
-
-export interface BitbucketStatus {
-  key: string;
-  state: "SUCCESSFUL" | "FAILED" | "INPROGRESS" | "STOPPED";
-  name: string;
-  url: string;
-}
-
 export interface BitbucketComment {
   id: number;
   content: { raw: string };
@@ -195,30 +181,6 @@ export const fetchPRActivity = async (prId: number): Promise<BitbucketActivity[]
   }
 
   const data = await response.json() as { values?: BitbucketActivity[] };
-  return data.values || [];
-};
-
-
-export const fetchPRTasks = async (prId: number): Promise<BitbucketTask[]> => {
-  const baseUrl = getBaseUrl();
-  const response = await fetch(`${baseUrl}/pullrequests/${prId}/tasks`, {
-    headers: bbHeaders(),
-  });
-
-  if (!response.ok) return [];
-  const data = await response.json() as { values?: BitbucketTask[] };
-  return data.values || [];
-};
-
-
-export const fetchPRStatuses = async (prId: number): Promise<BitbucketStatus[]> => {
-  const baseUrl = getBaseUrl();
-  const response = await fetch(`${baseUrl}/pullrequests/${prId}/statuses`, {
-    headers: bbHeaders(),
-  });
-
-  if (!response.ok) return [];
-  const data = await response.json() as { values?: BitbucketStatus[] };
   return data.values || [];
 };
 
