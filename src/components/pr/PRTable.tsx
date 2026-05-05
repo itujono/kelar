@@ -21,14 +21,6 @@ export const PRTable: React.FC<PRTableProps> = ({
   const myUsername = config.BITBUCKET_USERNAME?.toLowerCase();
   const myHandle = myUsername?.includes("@") ? myUsername.split("@")[0] : myUsername;
 
-  if (prs.length === 0) {
-    return (
-      <Box padding={1}>
-        <Text color="dim">No active pull requests found.</Text>
-      </Box>
-    );
-  }
-
   // Define columns and widths
   const COL_WIDTHS: Partial<Record<string, number>> = {
     id: 6,

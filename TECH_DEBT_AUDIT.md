@@ -109,12 +109,12 @@ Changed from fetching comments for all filtered PRs to only the visible window (
 
 - [x] F029: Fix `myHandle || ""` identity bug — 1 line change
 - [x] F040: Change `||` to `??` for `leadTime`/`pickupLatency` display — 2 lines
-- [ ] F017: Remove unused `zod` or start using it — either direction is fine
-- [ ] F018: Remove unused `@types/react-dom` devDependency
-- [ ] F008: Deduplicate "No active pull requests found" string
-- [ ] F020: Extract progress ratio to a variable in `LogTable` — 3 deletions, 1 addition
-- [x] F022: Replace `indexOf` in `renderCell` callbacks with direct `rowIndex` prop
-- [ ] F023: Replace 3 `.filter()` calls in `TixTable` with single-pass counting
+- [x] F017: Removed unused `zod` dependency
+- [x] F018: Removed unused `@types/react-dom` devDependency
+- [x] F008: Removed unreachable empty-state guard from PRTable (PRView handles it upstream with additional context)
+- [x] F020: Extract progress ratio to variables in `LogTable` — 3 computations → 1
+- [x] F022: Replace `indexOf` in `renderCell` callbacks with `rowIndex` prop (LogTable + TixTable + PRTable)
+- [x] F023: Replace 3 `.filter()` calls in `TixTable` with single-pass `.reduce()`
 
 ## Things That Look Bad But Are Actually Fine
 

@@ -54,6 +54,10 @@ export const LogTable: React.FC<LogTableProps> = ({
   }
   const visibleLogs = logs.slice(startIndex, startIndex + WINDOW_SIZE);
 
+  const progressRatio = totalMinutes / (targetHours * 60);
+  const progressPct = (progressRatio * 100).toFixed(1);
+  const progressBlocks = Math.floor(progressRatio * 30);
+
   const data = visibleLogs.map(log => ({
     Date: format(new Date(log.created_at), "dd MMM"),
     Identifier: log.identifier,
@@ -85,9 +89,9 @@ export const LogTable: React.FC<LogTableProps> = ({
             <Text color="dim">  ↓ {logs.length - (startIndex + WINDOW_SIZE)} more logs...</Text>
           </Box>
         ) : undefined}
-        renderCell={(col, val, row) => {
+        renderCell={(col, val, row, rowIndex) => {
           const log = row._raw as LogDbRow;
-          const isSelected = data.indexOf(row) === (selectedIndex - startIndex);
+          const isSelected = rowIndex === (selectedIndex - startIndex);
 
           if (!log.is_jira && (col === "Identifier" || col === "Type")) {
             return (
@@ -113,7 +117,7 @@ export const LogTable: React.FC<LogTableProps> = ({
           <Text color="dim"> ({totalMinutes}m) | </Text>
           {period === "month" && (
             <Text>
-              <Text color="magenta" bold>{((totalMinutes / (targetHours * 60)) * 100).toFixed(1)}%</Text>
+              <Text color="magenta" bold>{progressPct}%</Text>
               <Text color="dim"> of {targetHours}h goal | </Text>
               <Text color="yellow" bold>{daysRemaining}</Text>
               <Text color="dim"> days left</Text>
@@ -125,9 +129,9 @@ export const LogTable: React.FC<LogTableProps> = ({
         {period === "month" && (
           <Box marginTop={1}>
             <Text color="magenta">
-              {"█".repeat(Math.min(30, Math.floor((totalMinutes / (targetHours * 60)) * 30)))}
+              {"█".repeat(Math.min(30, progressBlocks))}
               <Text color="dim">
-                {"░".repeat(Math.max(0, 30 - Math.floor((totalMinutes / (targetHours * 60)) * 30)))}
+                {"░".repeat(Math.max(0, 30 - progressBlocks))}
               </Text>
             </Text>
           </Box>

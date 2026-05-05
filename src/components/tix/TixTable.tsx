@@ -57,12 +57,17 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
 
   // Calculate stats
   const total = tickets.length;
-  const todo = tickets.filter(t => t.fields.status.statusCategory.key === "new").length;
-  const inReview = tickets.filter(t => t.fields.status.name.toLowerCase().includes("review")).length;
-  const inProgress = tickets.filter(t =>
-    t.fields.status.statusCategory.key === "indeterminate" &&
-    !t.fields.status.name.toLowerCase().includes("review")
-  ).length;
+  const { todo, inProgress, inReview } = tickets.reduce(
+    (acc, t) => {
+      const key = t.fields.status.statusCategory.key;
+      const name = t.fields.status.name.toLowerCase();
+      if (key === "new") acc.todo++;
+      if (key === "indeterminate" && !name.includes("review")) acc.inProgress++;
+      if (name.includes("review")) acc.inReview++;
+      return acc;
+    },
+    { todo: 0, inProgress: 0, inReview: 0 }
+  );
 
   const zombies = tickets.filter(isZombieTicket).length;
 
@@ -99,9 +104,9 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
         header={start > 0 ? (
           <Text color="dim italic">  ↑ {start} more tickets...</Text>
         ) : undefined}
-        renderCell={(col, val, row) => {
+        renderCell={(col, val, row, rowIndex) => {
           const t = row._raw as JiraIssue;
-          const isSelected = (selectedIndex - start) === visibleTickets.indexOf(t);
+          const isSelected = (selectedIndex - start) === rowIndex;
 
           if (col === "Prio") {
             return <Text color={isSelected ? "black" : getPriorityColor(val)}>{val}</Text>;
