@@ -58,7 +58,7 @@ export function LogView({ period = "day", sortBy = "newest", isGenerateMode = fa
     return (
       <Box padding={1} flexDirection="column">
         <Text color="red">Error syncing logs:</Text>
-        <Text>{data.error}</Text>
+        <Text>{data.error?.message}</Text>
       </Box>
     );
   }

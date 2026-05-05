@@ -19,7 +19,7 @@ export function LogNew({ identifier, time, initialComment }: Props) {
   const { exit } = useApp();
   const [status, setStatus] = useState<Status>("IDLE");
   const [comment, setComment] = useState(initialComment || "");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
@@ -82,8 +82,8 @@ export function LogNew({ identifier, time, initialComment }: Props) {
 
       setStatus("SUCCESS");
       setTimeout(() => exit(), 1000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
       setStatus("ERROR");
     }
   }
@@ -139,7 +139,7 @@ export function LogNew({ identifier, time, initialComment }: Props) {
       {status === "ERROR" && (
         <Box marginTop={1} flexDirection="column">
           <Text color="red" bold>❌ Error</Text>
-          <Text color="red">{error}</Text>
+          <Text color="red">{error?.message}</Text>
         </Box>
       )}
     </Box>

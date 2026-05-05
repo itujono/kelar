@@ -74,15 +74,17 @@ export function formatMinutes(minutes: number): string {
 export const JIRA_KEY_REGEX = /^[A-Z]+-\d+$/i;
 
 /**
- * Get current timestamp in ISO with UTC+7 offset
+ * Configurable timezone offset for Jira timestamps.
+ * Format: "+0700", "-0500", etc. Override via KELAR_TZ_OFFSET env var.
+ */
+export const KELAR_TZ_OFFSET = process.env.KELAR_TZ_OFFSET || "+0700";
+
+/**
+ * Get current timestamp in ISO with the configured offset
  */
 export function getNowWithOffset(): string {
   // Jira expects started string like "2021-01-17T12:34:00.000+0700"
   const now = new Date();
-
-  // Shift date to UTC+7 for string representation if needed, 
-  // but usually we just want the ISO string with the +07:00 at the end.
-  // Bun's Date and Intl should handle this or we can use a helper.
 
   const pad = (n: number) => n.toString().padStart(2, '0');
   const yyyy = now.getFullYear();
@@ -92,7 +94,7 @@ export function getNowWithOffset(): string {
   const min = pad(now.getMinutes());
   const ss = pad(now.getSeconds());
 
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}.000+0700`;
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}.000${KELAR_TZ_OFFSET}`;
 }
 
 /**

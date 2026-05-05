@@ -14,6 +14,9 @@ const CACHE_THRESHOLD_MINUTES = 5;
 
 export function useLogView(period: PeriodType, sortBy: SortType) {
   const { exit } = useApp();
+  // Config is read once on mount. Changes made while the TUI is running
+  // require a restart to take effect. This is intentional — config is stable
+  // for the lifetime of a CLI session.
   const config = useMemo(() => getAppConfig(), []);
   const nav = useListState<SortType>(sortBy);
 
@@ -22,7 +25,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
 
   const [status, setStatus] = useState<ViewStatus>("IDLE");
   const [logs, setLogs] = useState<LogDbRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [isSelectingPeriod, setIsSelectingPeriod] = useState(false);
   const [periodIndex, setPeriodIndex] = useState(0);
   const [currentPeriod, setCurrentPeriod] = useState<PeriodType>(period);
@@ -60,7 +63,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
 
     const { valid, missing } = isConfigValid();
     if (!valid) {
-      setError(`Configuration incomplete. Missing: ${missing.join(", ")}`);
+      setError(new Error(`Configuration incomplete. Missing: ${missing.join(", ")}`));
       setStatus("ERROR");
       return;
     }
@@ -134,8 +137,8 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       const updatedLogs = dbOps.getLogs(sinceDate.toISOString());
       setLogs(updatedLogs);
       setStatus("SUCCESS");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
       setStatus("ERROR");
     }
   }, [currentPeriod, config, getSinceDate]);

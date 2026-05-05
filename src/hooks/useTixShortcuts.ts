@@ -62,6 +62,9 @@ export function useTixShortcuts({
   ...data
 }: TixShortcutParams) {
   const { exit } = useApp();
+  // Config is read once on mount. Changes made while the TUI is running
+  // require a restart to take effect. This is intentional — config is stable
+  // for the lifetime of a CLI session.
   const config = React.useMemo(() => getAppConfig(), []);
 
   useInput((input, key) => {

@@ -16,6 +16,9 @@ import { getAppConfig, DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS } f
 import { parseJiraTime, getNowWithOffset } from "../utils";
 
 export function useTixView(initialPeerMode: boolean) {
+  // Config is read once on mount. Changes made while the TUI is running
+  // require a restart to take effect. This is intentional — config is stable
+  // for the lifetime of a CLI session.
   const config = useMemo(() => getAppConfig(), []);
   const [currentPeerMode, setCurrentPeerMode] = useState(initialPeerMode);
   const [accountId, setAccountId] = useState<string | null>(initialPeerMode ? null : config.JIRA_ACCOUNT_ID);

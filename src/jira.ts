@@ -269,7 +269,15 @@ export async function searchIssues(jql: string, maxResults: number = 100): Promi
   if (cachedData && cachedTs) {
     const ts = parseInt(cachedTs, 10);
     if (Date.now() - ts < CACHE_DURATION) {
-      return JSON.parse(cachedData);
+      try {
+        const parsed = JSON.parse(cachedData);
+        if (Array.isArray(parsed) && parsed.every(item => item && typeof item.id === "string" && item.fields)) {
+          return parsed as JiraIssue[];
+        }
+      } catch {
+        // Invalid cache — fall through to fetch
+      }
+      dbOps.deleteConfigLike(CACHE_KEY);
     }
   }
 
@@ -330,7 +338,15 @@ export async function fetchUsers(query: string = ""): Promise<JiraUser[]> {
     if (cachedUsers && cachedTs) {
       const ts = parseInt(cachedTs, 10);
       if (Date.now() - ts < CACHE_DURATION) {
-        return JSON.parse(cachedUsers);
+        try {
+          const parsed = JSON.parse(cachedUsers);
+          if (Array.isArray(parsed) && parsed.every(u => u && typeof u.accountId === "string" && typeof u.displayName === "string")) {
+            return parsed as JiraUser[];
+          }
+        } catch {
+          // Invalid cache — fall through to fetch
+        }
+        dbOps.deleteConfigLike(CACHE_KEY);
       }
     }
   }
@@ -510,8 +526,17 @@ export async function fetchUserWorklogs(accountId: string, sinceDate: string): P
   const issues = await searchIssues(jql);
 
   const allWorklogs: JiraWorklog[] = [];
+  const seenIds = new Set<string>();
   const warnings: string[] = [];
   const since = new Date(sinceDate);
+
+  function addWorklog(wl: JiraWorklog) {
+    const wlDate = new Date(wl.started);
+    if (wl.author.accountId === accountId && wlDate >= since && !seenIds.has(wl.id)) {
+      seenIds.add(wl.id);
+      allWorklogs.push(wl);
+    }
+  }
 
   // Issues that might have more worklogs than the 20 returned by default in search
   const issuesToFetchMore: string[] = [];
@@ -520,12 +545,7 @@ export async function fetchUserWorklogs(accountId: string, sinceDate: string): P
     const wlData = issue.fields.worklog;
     if (wlData && Array.isArray(wlData.worklogs)) {
       // Add existing worklogs from search results
-      wlData.worklogs.forEach((wl: JiraWorklog) => {
-        const wlDate = new Date(wl.started);
-        if (wl.author.accountId === accountId && wlDate >= since) {
-          allWorklogs.push(wl);
-        }
-      });
+      wlData.worklogs.forEach(addWorklog);
 
       // Check if we need to fetch more
       const total = wlData.total || wlData.worklogs.length;
@@ -548,13 +568,7 @@ export async function fetchUserWorklogs(accountId: string, sinceDate: string): P
 
     extraWorklogResults.forEach((result, i) => {
       if (result.status === "fulfilled") {
-        result.value.forEach((wl: JiraWorklog) => {
-          const wlDate = new Date(wl.started);
-          // Only add if not already present (checking ID)
-          if (wl.author.accountId === accountId && wlDate >= since && !allWorklogs.find(existing => existing.id === wl.id)) {
-            allWorklogs.push(wl);
-          }
-        });
+        result.value.forEach(addWorklog);
       } else {
         const issueKey = issuesToFetchMore[i];
         warnings.push(`Failed to fetch worklogs for ${issueKey}: ${result.reason}`);

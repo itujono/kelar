@@ -47,7 +47,7 @@ export function PRView({ showAll = false, sortBy = "updated" as PRSortType }: PR
     return (
       <Box padding={1} flexDirection="column">
         <Text color="red">Error fetching PRs:</Text>
-        <Text>{(data.error as Error).message}</Text>
+        <Text>{data.error?.message}</Text>
       </Box>
     );
   }
