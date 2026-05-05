@@ -46,51 +46,6 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
     }) || [];
   }, [prs, filterQuery]);
 
-
-  const commentsQueries = useQueries({
-    queries: filteredPrs.map(pr => ({
-      queryKey: ["pr", pr.id, "comments"],
-      queryFn: () => fetchPRComments(pr.id),
-      staleTime: 1000 * 60 * 5,
-    }))
-  });
-
-
-  const prMetrics = useMemo(() => {
-    return Object.fromEntries(
-      commentsQueries
-        .map((query, index): [number, { fb: number; nr: number | null }] | null => {
-          const pr = filteredPrs[index];
-          if (!pr) return null;
-
-          const comments = query.data;
-          if (!comments) return [pr.id, { fb: 0, nr: null }];
-
-
-          const isAuthor = (u: BitbucketUser) => {
-            return u.account_id === pr.author.account_id || (!!u.uuid && u.uuid === pr.author.uuid);
-          };
-
-          // Feedbacks: Comments NOT by the PR author
-          const peerComments = comments.filter(c => !isAuthor(c.user));
-
-          // Not Replied: Peer comments that are unresolved AND have no reply from the PR author
-          const nrCount = peerComments.filter(peerComment => {
-            if (peerComment.is_resolved) return false;
-
-            const hasAuthorReply = comments.some(c => {
-              return isAuthor(c.user) && c.parent?.id === peerComment.id;
-            });
-
-            return !hasAuthorReply;
-          }).length;
-
-          return [pr.id, { fb: peerComments.length, nr: nrCount }];
-        })
-        .filter((entry): entry is [number, { fb: number; nr: number | null }] => entry !== null)
-    ) as Record<number, { fb: number; nr: number | null }>;
-  }, [commentsQueries, filteredPrs]);
-
   const sortedPrs = useMemo(() => {
     return [...filteredPrs].sort((a, b) => {
       const timeA = new Date(a.created_on).getTime();
@@ -106,6 +61,50 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
       return 0;
     });
   }, [filteredPrs, sortBy]);
+
+  const WINDOW_SIZE = 18;
+  const startIndex = Math.max(0, Math.min(selectedIndex - Math.floor(WINDOW_SIZE / 2), Math.max(0, sortedPrs.length - WINDOW_SIZE)));
+  const visiblePrs = sortedPrs.slice(startIndex, startIndex + WINDOW_SIZE);
+
+  const commentsQueries = useQueries({
+    queries: visiblePrs.map(pr => ({
+      queryKey: ["pr", pr.id, "comments"],
+      queryFn: () => fetchPRComments(pr.id),
+      staleTime: 1000 * 60 * 5,
+    }))
+  });
+
+  const prMetrics = useMemo(() => {
+    return Object.fromEntries(
+      commentsQueries
+        .map((query, index): [number, { fb: number; nr: number | null }] | null => {
+          const pr = visiblePrs[index];
+          if (!pr) return null;
+
+          const comments = query.data;
+          if (!comments) return [pr.id, { fb: 0, nr: null }];
+
+          const isAuthor = (u: BitbucketUser) => {
+            return u.account_id === pr.author.account_id || (!!u.uuid && u.uuid === pr.author.uuid);
+          };
+
+          const peerComments = comments.filter(c => !isAuthor(c.user));
+
+          const nrCount = peerComments.filter(peerComment => {
+            if (peerComment.is_resolved) return false;
+
+            const hasAuthorReply = comments.some(c => {
+              return isAuthor(c.user) && c.parent?.id === peerComment.id;
+            });
+
+            return !hasAuthorReply;
+          }).length;
+
+          return [pr.id, { fb: peerComments.length, nr: nrCount }];
+        })
+        .filter((entry): entry is [number, { fb: number; nr: number | null }] => entry !== null)
+    ) as Record<number, { fb: number; nr: number | null }>;
+  }, [commentsQueries, visiblePrs]);
 
   const summary = useMemo(() => {
     if (!prs || !me) return null;
@@ -202,7 +201,7 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
       return;
     }
 
-    if (isFiltering) return; // Let TextInput handle it
+    if (isFiltering) return;
 
     if (input === "q") {
       exit();
@@ -260,6 +259,8 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
     summary,
     activePR,
     handleFilterChange,
+    startIndex,
+    WINDOW_SIZE,
     refetch: () => {
       queryClient.invalidateQueries({ queryKey: ["prs"] });
       queryClient.invalidateQueries({ queryKey: ["pr"] });

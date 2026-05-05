@@ -1,6 +1,14 @@
 import { format } from "date-fns";
 import { formatMinutes } from "./utils";
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export function generateHtmlReport(
     logs: any[],
     period: string,
@@ -18,8 +26,8 @@ export function generateHtmlReport(
     <tr>
       <td>${format(new Date(log.created_at), "dd MMM")}</td>
       <td><span class="badge ${log.is_jira ? 'jira' : 'personal'}">${log.is_jira ? 'Jira' : 'Personal'}</span></td>
-      <td class="identifier">${log.identifier}</td>
-      <td class="label">${log.label || ""}</td>
+      <td class="identifier">${escapeHtml(log.identifier)}</td>
+      <td class="label">${escapeHtml(log.label || "")}</td>
       <td class="time">${formatMinutes(log.minutes)}</td>
     </tr>
   `).join("");

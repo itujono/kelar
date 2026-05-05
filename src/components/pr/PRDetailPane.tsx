@@ -92,12 +92,12 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
         <Text bold color="yellow">Velocity Metrics</Text>
         <Box paddingLeft={1}>
           <Text color="dim">Lead Time: </Text>
-          <Text>{formatDuration(velocity?.leadTime || null)}</Text>
+          <Text>{formatDuration(velocity?.leadTime ?? null)}</Text>
         </Box>
         <Box paddingLeft={1}>
           <Text color="dim">Pick-up Latency: </Text>
           <Text color={velocity?.pickupLatency && velocity.pickupLatency > 1000 * 60 * 60 * 4 ? "red" : "green"}>
-            {formatDuration(velocity?.pickupLatency || null)}
+            {formatDuration(velocity?.pickupLatency ?? null)}
           </Text>
         </Box>
       </Box>

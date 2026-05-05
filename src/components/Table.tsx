@@ -7,7 +7,7 @@ interface TableProps<T> {
   columnWidths?: Partial<Record<keyof T, number>>;
   compact?: boolean;
   selectedIndex?: number;
-  renderCell?: (column: keyof T, value: any, row: T) => React.ReactNode;
+  renderCell?: (column: keyof T, value: any, row: T, rowIndex: number) => React.ReactNode;
   header?: React.ReactNode;
   footer?: React.ReactNode;
 }
@@ -75,7 +75,7 @@ export function Table<T extends Record<string, any>>({
                   <Box key={String(col)} width={width} paddingRight={2} flexShrink={isWide ? 1 : 0}>
                     {renderCell ? (
                       (() => {
-                        const cell = renderCell(col, row[col], row);
+                        const cell = renderCell(col, row[col], row, rowIndex);
                         if (typeof cell === "string" || typeof cell === "number") {
                           return (
                             <Text color={isSelected ? "black" : undefined} wrap="truncate-end">
@@ -152,7 +152,7 @@ export function Table<T extends Record<string, any>>({
                       {renderCell ? (
                         <Box>
                           <Text color={isSelected ? "black" : undefined}>
-                            {renderCell(col, row[col], row)}
+                            {renderCell(col, row[col], row, rowIndex)}
                           </Text>
                         </Box>
                       ) : (

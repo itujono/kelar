@@ -62,8 +62,8 @@ export const PRTable: React.FC<PRTableProps> = ({
             nick === myUsername ||
             nick === myHandle ||
             display === myUsername ||
-            display?.includes(myUsername) ||
-            display?.includes(myHandle || "") ||
+            (myUsername && display?.includes(myUsername)) ||
+            (myHandle && display?.includes(myHandle)) ||
             account === myUsername ||
             account === myHandle
           );
@@ -122,9 +122,9 @@ export const PRTable: React.FC<PRTableProps> = ({
       footer={startIndex + WINDOW_SIZE < total ? (
         <Text color="dim italic">  ↓ {total - (startIndex + WINDOW_SIZE)} more pull requests...</Text>
       ) : undefined}
-      renderCell={(col, val, row) => {
-        const { pr, myReviewColor, approvals, changesRequested } = row._raw;
-        const isSelected = prs.indexOf(pr) === selectedIndex;
+      renderCell={(col, val, row, rowIndex) => {
+        const { myReviewColor, approvals, changesRequested } = row._raw;
+        const isSelected = (rowIndex + startIndex) === selectedIndex;
 
         if (col === "id" || col === "created" || col === "updated") {
           return <Text color={isSelected ? "black" : "dim"}>{val}</Text>;

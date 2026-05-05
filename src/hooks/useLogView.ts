@@ -105,7 +105,6 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
             worklogs = await fetchIssueWorklogs(issue.key);
           } catch (e) {
             console.error(`Failed to fetch worklogs for ${issue.key}:`, e);
-            // Continue with whatever we have
           }
         }
 
@@ -289,9 +288,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
         }
       }
     }
-
-  }
-  );
+  });
 
   return {
     status,
