@@ -3,6 +3,7 @@ import { useInput, useApp } from "ink";
 import { clearTixCache, type JiraIssue, type JiraTransition, type JiraUser } from "../jira";
 import { getAppConfig } from "../config";
 import type { UseMutationResult } from "@tanstack/react-query";
+import { openUrl, copyToClipboard } from "../platform";
 
 interface TixShortcutParams {
   activeModal: "log" | "move" | "estimate" | "view" | null;
@@ -189,12 +190,12 @@ export function useTixShortcuts({
       if (input === "c") {
         const domain = config.JIRA_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
         const url = `https://${domain}/browse/${activeTicket.key}`;
-        Bun.spawn(["pbcopy"], { stdin: Buffer.from(url) });
+        copyToClipboard(url);
       }
       if (input === "o") {
         const domain = config.JIRA_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
         const url = `https://${domain}/browse/${activeTicket.key}`;
-        Bun.spawn(["open", url]);
+        openUrl(url);
       }
     }
 

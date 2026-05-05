@@ -4,6 +4,7 @@ import { useQuery, useQueries } from "@tanstack/react-query";
 import { fetchPRs, fetchPRComments, fetchMe, type BitbucketUser, type BitbucketPR } from "../bitbucket";
 import { queryClient } from "../queryClient";
 import { useListState } from "./useListState";
+import { openUrl, copyToClipboard } from "../platform";
 
 export type PRSortType = "newest" | "oldest" | "updated" | "oldest_updated";
 
@@ -191,14 +192,12 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
 
     if (input === "o" && activePR) {
       const url = activePR.links.html.href;
-      Bun.spawn(["open", url]);
+      openUrl(url);
     }
 
     if (input === "c" && activePR) {
       const branch = activePR.source.branch.name;
-      Bun.spawn(["pbcopy"], {
-        stdin: Buffer.from(branch),
-      });
+      copyToClipboard(branch);
     }
 
     if (input === "m" && !nav.isFiltering) {

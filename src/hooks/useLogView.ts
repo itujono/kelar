@@ -1,10 +1,11 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useInput, useApp } from "ink";
-import { startOfDay, startOfWeek, startOfMonth, format, differenceInCalendarDays, addMonths, setDate } from "date-fns";
+import { format, startOfWeek, startOfMonth, startOfDay, setDate, addMonths, differenceInCalendarDays } from "date-fns";
 import { dbOps, type LogDbRow } from "../db";
 import { searchIssues, fetchIssueWorklogs } from "../jira";
-import { getAppConfig, isConfigValid, DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS } from "../config";
+import { getAppConfig, isConfigValid, DEFAULT_MONTHLY_TARGET_HOURS, DEFAULT_CALCULATION_DAY } from "../config";
 import { useListState } from "./useListState";
+import { openUrl } from "../platform";
 
 export type SortType = "longest" | "shortest" | "newest" | "oldest";
 export type PeriodType = "day" | "week" | "month";
@@ -237,7 +238,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
         const ticketId = activeLog.is_jira ? activeLog.identifier : config.PERSONAL_TICKET_ID;
         if (ticketId) {
           const url = `https://${domain}/browse/${ticketId}`;
-          Bun.spawn(["open", url]);
+          openUrl(url);
         }
       }
     }

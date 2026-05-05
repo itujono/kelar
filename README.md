@@ -214,4 +214,4 @@ bun run typecheck
 - Ink-based flexbox layouts
 - SQLite (via `bun:sqlite`)
 - Jira Cloud & Bitbucket Cloud REST APIs (v3/v2)
-- Timezone using a fixed GMT+7 offset.
+- Timezone uses the system's local timezone offset automatically.

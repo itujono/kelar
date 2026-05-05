@@ -116,13 +116,9 @@ Changed from fetching comments for all filtered PRs to only the visible window (
 
 ## Things That Look Bad But Are Actually Fine
 
-- **`Bun.spawn(["open", url])` and `Bun.spawn(["pbcopy"])` at `src/hooks/usePRView.ts:226,231` and `src/hooks/useTixShortcuts.ts:188,193`.** These look like platform-specific `open`/`pbcopy` commands that would break on Linux. This is intentional — the README documents this as a macOS-first tool, and `open`/`pbcopy` are standard macOS utilities. If cross-platform support is desired, that's a feature request, not debt.
-
 - **`new Date()` calls scattered across hooks (`useLogView.ts:49`, `useTixView.ts:54`, `utils.ts:80`).** These make the code harder to unit test since `Date.now()` is unmockable in some setups, but Bun's test runner handles Date mocking fine. For a CLI tool that runs once and exits, deterministic time isn't a production concern — only a testing one, and the test coverage gap is the root problem, not the `new Date()` calls.
 
 - **`src/report.ts` — The entire file is a 235-line template literal generating HTML.** This looks like it should use a templating engine, but for a CLI tool that generates a single static HTML report, a template literal is the pragmatic choice. Adding a template engine would be an over-engineering step for a file that changes rarely and has no dynamic partials.
-
-- **`src/utils.ts:78-95` — GMT+7 timezone offset default.** This looks like it should use the system timezone, but the README explicitly states "Timezone using a fixed GMT+7 offset." The offset is now configurable via `KELAR_TZ_OFFSET` env var (defaults to `"+0700"`). This is an intentional product decision (the developer works in GMT+7), not an accidental limitation.
 
 ## Open Questions
 

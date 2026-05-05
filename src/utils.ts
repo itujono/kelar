@@ -84,16 +84,21 @@ export function formatMinutes(minutes: number): string {
 export const JIRA_KEY_REGEX = /^[A-Z]+-\d+$/i;
 
 /**
- * Configurable timezone offset for Jira timestamps.
- * Format: "+0700", "-0500", etc. Override via KELAR_TZ_OFFSET env var.
+ * System timezone offset string (e.g. "+0700", "-0500").
  */
-export const KELAR_TZ_OFFSET = process.env.KELAR_TZ_OFFSET || "+0700";
+function getSystemTzOffset(): string {
+  const offsetMinutes = -new Date().getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const h = String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, "0");
+  const m = String(Math.abs(offsetMinutes) % 60).padStart(2, "0");
+  return `${sign}${h}${m}`;
+}
 
 /**
- * Get current timestamp in ISO with the configured offset
+ * Get current timestamp in ISO with the system timezone offset.
+ * Jira expects started string like "2021-01-17T12:34:00.000+0700"
  */
 export function getNowWithOffset(): string {
-  // Jira expects started string like "2021-01-17T12:34:00.000+0700"
   const now = new Date();
 
   const pad = (n: number) => n.toString().padStart(2, '0');
@@ -104,7 +109,7 @@ export function getNowWithOffset(): string {
   const min = pad(now.getMinutes());
   const ss = pad(now.getSeconds());
 
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}.000${KELAR_TZ_OFFSET}`;
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}.000${getSystemTzOffset()}`;
 }
 
 /**
