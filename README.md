@@ -97,10 +97,9 @@ sqlite3 ~/.kelar/kelar.db
 ## Development
 
 ```bash
-bun run dev            # Run the CLI in dev mode
-bun run dev log list month  # Pass commands directly
-bun test               # Run tests
-bun run typecheck      # Type check
+bun run dev       # Run the CLI in dev mode
+bun test          # Run tests
+bun run typecheck # Type check
 ```
 
 Built with Bun, TypeScript, Ink, SQLite. Talks to Jira Cloud REST API v3 and Bitbucket Cloud API v2.
