@@ -210,6 +210,25 @@ export const fetchPRComments = async (prId: number): Promise<BitbucketComment[]>
   return data.values || [];
 };
 
+export function calculatePRFeedbackMetrics(pr: BitbucketPR, comments: BitbucketComment[]): { fb: number; nr: number } {
+  const isAuthor = (u: BitbucketUser) => {
+    return u.account_id === pr.author.account_id || (!!u.uuid && u.uuid === pr.author.uuid);
+  };
+
+  const peerComments = comments.filter(c => !isAuthor(c.user));
+  const nr = peerComments.filter(peerComment => {
+    if (peerComment.is_resolved) return false;
+
+    const hasAuthorReply = comments.some(c => {
+      return isAuthor(c.user) && c.parent?.id === peerComment.id;
+    });
+
+    return !hasAuthorReply;
+  }).length;
+
+  return { fb: peerComments.length, nr };
+}
+
 export const calculateVelocity = (pr: BitbucketPR, activities: BitbucketActivity[]) => {
   const created = new Date(pr.created_on).getTime();
   const leadTime = Date.now() - created;

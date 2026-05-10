@@ -2,16 +2,13 @@ import React from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import { useQuery } from "@tanstack/react-query";
-import { getBitbucketConfig } from "../../config";
 import { formatDuration } from "../../utils";
 import {
   type BitbucketPR,
-  type BitbucketUser,
   fetchPRActivity,
   fetchPRComments,
-  fetchMe,
   calculateVelocity,
-  isBitbucketMe
+  calculatePRFeedbackMetrics
 } from "../../bitbucket";
 
 
@@ -30,29 +27,10 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
     queryFn: () => fetchPRComments(pr.id),
   });
 
-  const { data: me } = useQuery({
-    queryKey: ["me"],
-    queryFn: fetchMe,
-    staleTime: 1000 * 60 * 60,
-  });
-
   const velocity = activity ? calculateVelocity(pr, activity) : null;
-  const config = React.useMemo(() => getBitbucketConfig(), []);
-
-  const isMe = (u: BitbucketUser) => {
-    return isBitbucketMe(u, config, me ?? undefined);
-  };
-
-  const myPeerComments = comments?.filter(c => !isMe(c.user)) || [];
-
-  const resolvedCount = myPeerComments.filter(c => c.is_resolved).length;
-  const nrCount = myPeerComments.filter(peerComment => {
-    if (peerComment.is_resolved) return false;
-    const hasMyReply = (comments || []).some(c => {
-      return isMe(c.user) && c.parent?.id === peerComment.id;
-    });
-    return !hasMyReply;
-  }).length;
+  const feedbackMetrics = calculatePRFeedbackMetrics(pr, comments || []);
+  const peerComments = (comments || []).filter(c => c.user.account_id !== pr.author.account_id && c.user.uuid !== pr.author.uuid);
+  const resolvedCount = peerComments.filter(c => c.is_resolved).length;
 
   return (
     <Box flexDirection="column" paddingX={2} width={50} minHeight={20} borderStyle="single" borderColor="cyan">
@@ -100,13 +78,13 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
         </Box>
         <Box paddingLeft={1}>
           <Text color="dim">Not Replied: </Text>
-          <Text color={nrCount > 0 ? "red" : "dim"}>
-            {nrCount} items
+          <Text color={feedbackMetrics.nr > 0 ? "red" : "dim"}>
+            {feedbackMetrics.nr} items
           </Text>
         </Box>
         <Box paddingLeft={1}>
           <Text color="dim">Total Feedbacks: </Text>
-          <Text color="magenta">{myPeerComments.length}</Text>
+          <Text color="magenta">{feedbackMetrics.fb}</Text>
         </Box>
       </Box>
 
@@ -119,5 +97,3 @@ export const PRDetailPane: React.FC<PRDetailPaneProps> = ({ pr }) => {
     </Box>
   );
 };
-
-

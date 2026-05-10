@@ -12,7 +12,6 @@ export type {
 
 // Client & validation
 export {
-  getAuthHeader,
   getBaseUrl,
   jiraHeaders,
   assertObject,

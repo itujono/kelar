@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useInput, useApp } from "ink";
 import { useQuery, useQueries } from "@tanstack/react-query";
-import { fetchPRs, fetchPRComments, fetchMe, type BitbucketUser, type BitbucketPR } from "../bitbucket";
+import { fetchPRs, fetchPRComments, fetchMe, calculatePRFeedbackMetrics } from "../bitbucket";
 import { queryClient } from "../queryClient";
 import { useListState } from "./useListState";
 import { openUrl, copyToClipboard } from "../platform";
@@ -81,23 +81,7 @@ export function usePRView(initialShowAll: boolean, initialSortBy: PRSortType = "
           const comments = query.data;
           if (!comments) return [pr.id, { fb: 0, nr: null }];
 
-          const isAuthor = (u: BitbucketUser) => {
-            return u.account_id === pr.author.account_id || (!!u.uuid && u.uuid === pr.author.uuid);
-          };
-
-          const peerComments = comments.filter(c => !isAuthor(c.user));
-
-          const nrCount = peerComments.filter(peerComment => {
-            if (peerComment.is_resolved) return false;
-
-            const hasAuthorReply = comments.some(c => {
-              return isAuthor(c.user) && c.parent?.id === peerComment.id;
-            });
-
-            return !hasAuthorReply;
-          }).length;
-
-          return [pr.id, { fb: peerComments.length, nr: nrCount }];
+          return [pr.id, calculatePRFeedbackMetrics(pr, comments)];
         })
         .filter((entry): entry is [number, { fb: number; nr: number | null }] => entry !== null)
     ) as Record<number, { fb: number; nr: number | null }>;

@@ -11,7 +11,7 @@ function getConfigSignature(email: string, token: string, domain: string): strin
   return `${email}:${token}:${domain}`;
 }
 
-export function getAuthHeader() {
+function getAuthHeader() {
   const config = getAppConfig();
   if (!config.JIRA_EMAIL || !config.JIRA_TOKEN) {
     throw new Error("Jira credentials not configured.");
