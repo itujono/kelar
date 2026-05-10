@@ -53,7 +53,8 @@ export function jiraHeaders(): Record<string, string> {
 
 export function assertObject(val: unknown, context: string): asserts val is Record<string, unknown> {
   if (typeof val !== "object" || val === null || Array.isArray(val)) {
-    throw new Error(`Unexpected API response: expected object, got ${typeof val} (${context})`);
+    const actual = val === null ? "null" : Array.isArray(val) ? "array" : typeof val;
+    throw new Error(`Unexpected API response: expected object, got ${actual} (${context})`);
   }
 }
 

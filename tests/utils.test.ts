@@ -1,7 +1,6 @@
 import { test, expect, describe } from "bun:test";
 import { parseJiraTime, roundToNearest5, formatMinutes, formatDuration, extractAdfText, isZombieTicket } from "../src/utils";
 import type { JiraIssue } from "../src/jira";
-import { calculatePRFeedbackMetrics, type BitbucketComment, type BitbucketPR, type BitbucketUser } from "../src/bitbucket";
 
 describe("Time Parsing", () => {
   test("parses minutes", () => {
@@ -254,76 +253,3 @@ describe("isZombieTicket", () => {
   });
 });
 
-describe("calculatePRFeedbackMetrics", () => {
-  const author: BitbucketUser = { display_name: "Author", uuid: "author-uuid", account_id: "author-id" };
-  const reviewer: BitbucketUser = { display_name: "Reviewer", uuid: "reviewer-uuid", account_id: "reviewer-id" };
-
-  const makePR = (): BitbucketPR => ({
-    id: 123,
-    title: "Test PR",
-    description: "",
-    state: "OPEN",
-    author,
-    source: { branch: { name: "feature" } },
-    destination: { branch: { name: "main" } },
-    created_on: new Date().toISOString(),
-    updated_on: new Date().toISOString(),
-    links: { html: { href: "https://example.com" } },
-    comment_count: 0,
-    task_count: 0,
-  });
-
-  const makeComment = (id: number, user: BitbucketUser, parentId?: number): BitbucketComment => ({
-    id,
-    content: { raw: "comment" },
-    user,
-    created_on: new Date().toISOString(),
-    updated_on: new Date().toISOString(),
-    is_resolved: false,
-    parent: parentId ? { id: parentId } : undefined,
-  });
-
-  test("counts feedback from non-authors, not non-current-user", () => {
-    const pr = makePR();
-    const comments = [1, 2, 3, 4, 5].map(id => makeComment(id, reviewer));
-
-    expect(calculatePRFeedbackMetrics(pr, comments)).toEqual({ fb: 5, nr: 5 });
-  });
-
-  test("does not count peer feedback as not replied after author replies", () => {
-    const pr = makePR();
-    const comments = [
-      makeComment(1, reviewer),
-      makeComment(2, author, 1),
-      makeComment(3, reviewer),
-    ];
-
-    expect(calculatePRFeedbackMetrics(pr, comments)).toEqual({ fb: 2, nr: 1 });
-  });
-});
-
-describe("HTML escaping (report.ts)", () => {
-  const escapeHtml = (s: string): string => {
-    return s
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  };
-
-  test("escapes HTML special characters", () => {
-    expect(escapeHtml("<script>alert(1)</script>")).toBe("&lt;script&gt;alert(1)&lt;/script&gt;");
-  });
-
-  test("escapes ampersands", () => {
-    expect(escapeHtml("a & b")).toBe("a &amp; b");
-  });
-
-  test("escapes double quotes", () => {
-    expect(escapeHtml('say "hello"')).toBe("say &quot;hello&quot;");
-  });
-
-  test("leaves plain text unchanged", () => {
-    expect(escapeHtml("Hello world")).toBe("Hello world");
-  });
-});

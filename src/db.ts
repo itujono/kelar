@@ -135,6 +135,11 @@ export const dbOps = {
     return db.prepare("DELETE FROM config WHERE key LIKE ?").run(pattern);
   },
 
+  deleteConfig: (key: string) => {
+    const db = getDb();
+    return db.prepare("DELETE FROM config WHERE key = ?").run(key);
+  },
+
   getAllConfig: () => {
     const db = getDb();
     return db.prepare("SELECT * FROM config").all() as { key: string; value: string }[];
