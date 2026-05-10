@@ -31,8 +31,9 @@ const getPriorityColor = (priorityName: string): string => {
 export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) => {
   const COL_WIDTHS = {
     ID: 8,
+    Project: 18,
     Prio: 8,
-    Title: 100,
+    Title: 82,
     Status: 12,
     Assignee: 12,
     Est: 8,
@@ -72,6 +73,7 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
       <Table
         data={visibleTickets.map(t => ({
           ID: t.key,
+          Project: t.fields.project.name,
           Prio: t.fields.priority?.name || "None",
           Title: t.fields.summary,
           Status: t.fields.status.name,
@@ -82,7 +84,7 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
           Updated: formatRelativeTime(new Date(t.fields.updated)),
           _statusCategoryKey: t.fields.status.statusCategory.key,
         }))}
-        columns={["ID", "Prio", "Title", "Status", "Assignee", "Est", "Log", "Created", "Updated"]}
+        columns={["ID", "Project", "Prio", "Title", "Status", "Assignee", "Est", "Log", "Created", "Updated"]}
         columnWidths={COL_WIDTHS}
         compact
         selectedIndex={selectedIndex - startIndex}
@@ -102,7 +104,7 @@ export const TixTable: React.FC<TixTableProps> = ({ tickets, selectedIndex }) =>
             return <Text color={isSelected ? "black" : "yellow"}>{val as React.ReactNode}</Text>;
           }
           if (isSelected) return val as React.ReactNode;
-          if (col === "ID" || col === "Est" || col === "Log" || col === "Created" || col === "Updated") {
+          if (col === "ID" || col === "Project" || col === "Est" || col === "Log" || col === "Created" || col === "Updated") {
             return <Text color="dim">{val as React.ReactNode}</Text>;
           }
           return val as React.ReactNode;

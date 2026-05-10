@@ -22,6 +22,7 @@ function getDb(): Database {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       identifier TEXT NOT NULL,
       label TEXT,
+      project TEXT,
       minutes INTEGER NOT NULL,
       jira_worklog_id TEXT UNIQUE,
       is_jira INTEGER NOT NULL,
@@ -41,6 +42,9 @@ function getDb(): Database {
     _db.run("ALTER TABLE logs ADD COLUMN jira_worklog_id TEXT");
     _db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_worklog_id ON logs(jira_worklog_id)");
   }
+  if (!existingColumns.has("project")) {
+    _db.run("ALTER TABLE logs ADD COLUMN project TEXT");
+  }
 
   _db.run(`
     CREATE TABLE IF NOT EXISTS config (
@@ -56,6 +60,7 @@ export interface LogEntry {
   id?: number;
   identifier: string;
   label?: string;
+  project?: string;
   minutes: number;
   jira_worklog_id?: string;
   is_jira: boolean;
@@ -66,6 +71,7 @@ export interface LogDbRow {
   id: number;
   identifier: string;
   label: string | null;
+  project: string | null;
   minutes: number;
   jira_worklog_id: string | null;
   is_jira: number; // SQLite stores boolean as 0/1
@@ -77,14 +83,15 @@ export const dbOps = {
   addLog: (log: LogEntry) => {
     const db = getDb();
     return db.prepare(`
-      INSERT INTO logs (identifier, label, minutes, jira_worklog_id, is_jira, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO logs (identifier, label, project, minutes, jira_worklog_id, is_jira, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(jira_worklog_id) DO UPDATE SET
         identifier = excluded.identifier,
         label = excluded.label,
+        project = excluded.project,
         minutes = excluded.minutes,
         created_at = excluded.created_at
-    `).run(log.identifier, log.label || null, log.minutes, log.jira_worklog_id || null, log.is_jira ? 1 : 0, log.created_at);
+    `).run(log.identifier, log.label || null, log.project || null, log.minutes, log.jira_worklog_id || null, log.is_jira ? 1 : 0, log.created_at);
   },
 
   getLogs: (sinceISO?: string): LogDbRow[] => {

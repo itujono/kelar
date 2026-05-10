@@ -52,8 +52,9 @@ export const LogTable: React.FC<LogTableProps> = ({
   }
 
   const data = visibleLogs.map(log => ({
-        Date: format(new Date(log.created_at), "dd MMM"),
+    Date: format(new Date(log.created_at), "dd MMM"),
     Identifier: log.identifier,
+    Project: log.project || "-",
     Label: log.label || "",
     Type: log.is_jira ? "Jira" : "Personal",
     Time: formatMinutes(log.minutes),
@@ -61,14 +62,15 @@ export const LogTable: React.FC<LogTableProps> = ({
   }));
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" flexGrow={1} flexShrink={1}>
       <Table
         data={data}
-        columns={["Date", "Identifier", "Label", "Type", "Time"]}
+        columns={["Date", "Identifier", "Project", "Label", "Type", "Time"]}
         columnWidths={{
           Date: 10,
           Identifier: 30,
-          Label: 80,
+          Project: 18,
+          Label: 62,
           Type: 12,
           Time: 10
         }}
@@ -93,7 +95,7 @@ export const LogTable: React.FC<LogTableProps> = ({
             );
           }
           if (isSelected) return val as React.ReactNode;
-          if (col === "Date" || col === "Identifier") {
+          if (col === "Date" || col === "Identifier" || col === "Project") {
             return <Text color="dim">{val as React.ReactNode}</Text>;
           }
           if (col === "Time") {

@@ -46,6 +46,7 @@ describe("dbOps - logs", () => {
     dbOps.addLog({
       identifier: "TEST-123",
       label: "Test ticket",
+      project: "Test Project",
       minutes: 45,
       jira_worklog_id: worklogId,
       is_jira: true,
@@ -59,6 +60,7 @@ describe("dbOps - logs", () => {
     expect(found!.minutes).toBe(45);
     expect(found!.is_jira).toBe(1);
     expect(found!.label).toBe("Test ticket");
+    expect(found!.project).toBe("Test Project");
   });
 
   test("addLog with upsert on conflict", () => {
@@ -68,6 +70,7 @@ describe("dbOps - logs", () => {
     dbOps.addLog({
       identifier: "TEST-456",
       label: "Original",
+      project: "Original Project",
       minutes: 30,
       jira_worklog_id: worklogId,
       is_jira: true,
@@ -77,6 +80,7 @@ describe("dbOps - logs", () => {
     dbOps.addLog({
       identifier: "TEST-456",
       label: "Updated",
+      project: "Updated Project",
       minutes: 60,
       jira_worklog_id: worklogId,
       is_jira: true,
@@ -87,6 +91,7 @@ describe("dbOps - logs", () => {
     const found = logs.find(l => l.jira_worklog_id === worklogId);
     expect(found).toBeDefined();
     expect(found!.label).toBe("Updated");
+    expect(found!.project).toBe("Updated Project");
     expect(found!.minutes).toBe(60);
   });
 

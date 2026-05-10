@@ -97,7 +97,7 @@ sqlite3 ~/.kelar/kelar.db
 ## Development
 
 ```bash
-bun run dev       # Run the CLI in dev mode
+bun run dev -- <command> # Run a CLI command in dev mode, e.g. bun run dev -- log list month
 bun test          # Run tests
 bun run typecheck # Type check
 ```

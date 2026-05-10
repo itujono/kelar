@@ -54,6 +54,10 @@ export const LogDetailPane: React.FC<LogDetailPaneProps> = ({ log, allLogs }) =>
           <Box width={15}><Text color="dim">Entries Count:</Text></Box>
           <Text>{identifierLogs.length} logs</Text>
         </Box>
+        <Box>
+          <Box width={15}><Text color="dim">Project:</Text></Box>
+          <Text>{log.project || "-"}</Text>
+        </Box>
       </Box>
 
       <Box
