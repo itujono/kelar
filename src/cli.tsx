@@ -36,7 +36,7 @@ const program = new Command();
 
 program
   .name("kelar")
-  .description("Manage Jira worklogs with Bun and Ink")
+  .description("Manage Jira worklogs from your terminal")
   .version("1.0.0");
 
 const log = program.command("log").description("Manage work logs");

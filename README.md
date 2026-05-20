@@ -30,9 +30,43 @@ A terminal-based Jira and Bitbucket manager. Track worklogs, monitor pull reques
 
 ## Installation
 
+Kelar currently runs on Bun because it uses Bun's SQLite runtime API, but you
+can install and link dependencies with whichever package manager you prefer.
+If Bun is not installed yet, install it first:
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
+
+After installing Bun, restart your terminal or follow the installer output so
+`bun` is available on your `PATH`.
+
+### Bun
+
 ```bash
 bun install
 bun link
+```
+
+### npm
+
+```bash
+npm install
+npm link
+```
+
+### pnpm
+
+```bash
+pnpm install
+pnpm link --global
+```
+
+### Yarn
+
+```bash
+yarn install
+yarn link
 ```
 
 Now `kelar` is available anywhere.
@@ -97,9 +131,12 @@ sqlite3 ~/.kelar/kelar.db
 ## Development
 
 ```bash
-bun run dev -- <command> # Run a CLI command in dev mode, e.g. bun run dev -- log list month
-bun test          # Run tests
-bun run typecheck # Type check
+npm run dev -- <command> # Run a CLI command in dev mode, e.g. npm run dev -- log list month
+npm test                # Run tests
+npm run typecheck       # Type check
 ```
 
-Built with Bun, TypeScript, Ink, SQLite. Talks to Jira Cloud REST API v3 and Bitbucket Cloud API v2.
+Replace `npm run` with `bun run`, `pnpm`, or `yarn` if you prefer another
+package manager.
+
+Built with TypeScript, Ink, Bun's SQLite runtime, and SQLite. Talks to Jira Cloud REST API v3 and Bitbucket Cloud API v2.
