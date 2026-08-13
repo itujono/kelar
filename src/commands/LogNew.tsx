@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Text, Box, useApp } from "ink";
+import { Text, Box, useApp, useInput, useStdin } from "ink";
 import Spinner from "ink-spinner";
 import TextInput from "ink-text-input";
 import { JIRA_KEY_REGEX, parseJiraTime, roundToNearest5, getNowWithOffset } from "../utils";
-import { fetchIssueDetails, postWorklog } from "../jira";
+import { fetchIssueDetails, postWorklog, type JiraIssue } from "../jira";
 import { getAppConfig } from "../config";
 import { dbOps } from "../db";
 
@@ -17,25 +17,79 @@ interface Props {
 
 export function LogNew({ identifier, time, initialComment }: Props) {
   const { exit } = useApp();
+  const { isRawModeSupported } = useStdin();
   const [status, setStatus] = useState<Status>("IDLE");
   const [comment, setComment] = useState(initialComment || "");
+  const [issue, setIssue] = useState<JiraIssue | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
     const isJiraKey = JIRA_KEY_REGEX.test(identifier);
-    if (!initialComment && isJiraKey) {
-      setStatus("GET_COMMENT");
-    } else {
-      run(initialComment || "");
+    if (!isJiraKey) {
+      run(initialComment || "", null);
+      return;
     }
+
+    let cancelled = false;
+    setStatus("VALIDATING");
+    fetchIssueDetails(identifier)
+      .then((fetchedIssue) => {
+        if (cancelled) return;
+        setIssue(fetchedIssue);
+        setInfo(`Found ticket: ${fetchedIssue.fields.summary}`);
+
+        const myAccountId = getAppConfig().JIRA_ACCOUNT_ID;
+        if (fetchedIssue.fields.assignee?.accountId !== myAccountId) {
+          setWarning(`Warning: This ticket is assigned to ${fetchedIssue.fields.assignee?.displayName || "someone else"}.`);
+          // Non-interactive runs can't answer the prompt, so fall through with the warning shown
+          if (isRawModeSupported) {
+            setStatus("WARNING_OVERRIDE");
+            return;
+          }
+        }
+
+        proceed(fetchedIssue);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err : new Error(String(err)));
+        setStatus("ERROR");
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [identifier, time, initialComment]);
 
-  async function run(finalComment: string) {
-    try {
-      setStatus("VALIDATING");
+  function proceed(validatedIssue: JiraIssue) {
+    if (initialComment) {
+      run(initialComment, validatedIssue);
+    } else {
+      setStatus("GET_COMMENT");
+    }
+  }
 
+  // Keep this subscriber active from the first render: raw mode only attaches
+  // reliably at mount, so a useInput that activates after the async validation
+  // never receives keys (the app then exits with a drained event loop).
+  useInput(
+    (input, key) => {
+      if (status !== "WARNING_OVERRIDE") return;
+      if (input.toLowerCase() === "y" && issue) {
+        proceed(issue);
+      } else if (input.toLowerCase() === "n" || key.escape || key.return) {
+        exit();
+      }
+    },
+    // Must be a real boolean: ink skips raw mode only when isActive === false,
+    // and isRawModeSupported is `undefined` (not false) on non-TTY stdin.
+    { isActive: Boolean(isRawModeSupported) }
+  );
+
+  async function run(finalComment: string, validatedIssue: JiraIssue | null) {
+    try {
       const config = getAppConfig();
       const minutesRaw = parseJiraTime(time);
       const minutes = roundToNearest5(minutesRaw);
@@ -47,17 +101,7 @@ export function LogNew({ identifier, time, initialComment }: Props) {
       let label = "";
 
       if (isJiraKey) {
-        const issue = await fetchIssueDetails(identifier);
-        setInfo(`Found ticket: ${issue.fields.summary}`);
-        label = issue.fields.summary;
-
-        const myAccountId = config.JIRA_ACCOUNT_ID;
-        if (issue.fields.assignee?.accountId !== myAccountId) {
-          setWarning(`Warning: This ticket is assigned to ${issue.fields.assignee?.displayName || "someone else"}.`);
-        }
-        if (!worklogComment) {
-          worklogComment = "";
-        }
+        label = validatedIssue?.fields.summary ?? identifier;
       } else {
         if (!config.PERSONAL_TICKET_ID) {
           throw new Error("PERSONAL_TICKET_ID not set in config.");
@@ -102,7 +146,7 @@ export function LogNew({ identifier, time, initialComment }: Props) {
             <TextInput
               value={comment}
               onChange={setComment}
-              onSubmit={(val) => run(val)}
+              onSubmit={(val) => run(val, issue)}
             />
           </Box>
         </Box>
@@ -128,6 +172,10 @@ export function LogNew({ identifier, time, initialComment }: Props) {
 
       {warning && (
         <Text color="yellow">⚠️ {warning}</Text>
+      )}
+
+      {status === "WARNING_OVERRIDE" && (
+        <Text>Log anyway? <Text color="dim">(y/N)</Text></Text>
       )}
 
       {status === "SUCCESS" && (
