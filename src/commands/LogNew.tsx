@@ -118,6 +118,7 @@ export function LogNew({ identifier, time, initialComment }: Props) {
       dbOps.addLog({
         identifier: identifier,
         label: label,
+        comment: worklogComment,
         minutes,
         jira_worklog_id: jiraResponse.id,
         is_jira: isJiraKey,

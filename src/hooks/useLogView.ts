@@ -106,6 +106,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
               identifier: isPersonal ? (commentText || "Personal Log") : issue.key,
               label: isPersonal ? (commentText || "") : issue.fields.summary,
               project: issue.fields.project.name,
+              comment: commentText,
               minutes: Math.round(wl.timeSpentSeconds / 60),
               jira_worklog_id: wl.id,
               is_jira: !isPersonal,

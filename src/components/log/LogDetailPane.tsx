@@ -21,6 +21,9 @@ export const LogDetailPane: React.FC<LogDetailPaneProps> = ({ log, allLogs }) =>
     identifierLogs.reduce((sum, l) => sum + l.minutes, 0),
   [identifierLogs]);
 
+  // Personal logs store the remark as their identifier, so repeating it here is noise
+  const remarks = log.comment && log.comment !== log.identifier ? log.comment : null;
+
   return (
     <Box
       flexDirection="column"
@@ -57,6 +60,12 @@ export const LogDetailPane: React.FC<LogDetailPaneProps> = ({ log, allLogs }) =>
         <Box>
           <Box width={15}><Text color="dim">Project:</Text></Box>
           <Text>{log.project || "-"}</Text>
+        </Box>
+        <Box>
+          <Box width={15} flexShrink={0}><Text color="dim">Remarks:</Text></Box>
+          <Box flexGrow={1}>
+            <Text wrap="wrap" color={remarks ? undefined : "dim"}>{remarks || "-"}</Text>
+          </Box>
         </Box>
       </Box>
 

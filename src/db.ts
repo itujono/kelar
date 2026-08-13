@@ -23,6 +23,7 @@ function getDb(): Database {
       identifier TEXT NOT NULL,
       label TEXT,
       project TEXT,
+      comment TEXT,
       minutes INTEGER NOT NULL,
       jira_worklog_id TEXT UNIQUE,
       is_jira INTEGER NOT NULL,
@@ -45,6 +46,9 @@ function getDb(): Database {
   if (!existingColumns.has("project")) {
     _db.run("ALTER TABLE logs ADD COLUMN project TEXT");
   }
+  if (!existingColumns.has("comment")) {
+    _db.run("ALTER TABLE logs ADD COLUMN comment TEXT");
+  }
 
   _db.run(`
     CREATE TABLE IF NOT EXISTS config (
@@ -61,6 +65,7 @@ export interface LogEntry {
   identifier: string;
   label?: string;
   project?: string;
+  comment?: string;
   minutes: number;
   jira_worklog_id?: string;
   is_jira: boolean;
@@ -72,6 +77,7 @@ export interface LogDbRow {
   identifier: string;
   label: string | null;
   project: string | null;
+  comment: string | null;
   minutes: number;
   jira_worklog_id: string | null;
   is_jira: number; // SQLite stores boolean as 0/1
@@ -83,15 +89,16 @@ export const dbOps = {
   addLog: (log: LogEntry) => {
     const db = getDb();
     return db.prepare(`
-      INSERT INTO logs (identifier, label, project, minutes, jira_worklog_id, is_jira, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO logs (identifier, label, project, comment, minutes, jira_worklog_id, is_jira, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(jira_worklog_id) DO UPDATE SET
         identifier = excluded.identifier,
         label = excluded.label,
         project = excluded.project,
+        comment = excluded.comment,
         minutes = excluded.minutes,
         created_at = excluded.created_at
-    `).run(log.identifier, log.label || null, log.project || null, log.minutes, log.jira_worklog_id || null, log.is_jira ? 1 : 0, log.created_at);
+    `).run(log.identifier, log.label || null, log.project || null, log.comment || null, log.minutes, log.jira_worklog_id || null, log.is_jira ? 1 : 0, log.created_at);
   },
 
   getLogs: (sinceISO?: string): LogDbRow[] => {
