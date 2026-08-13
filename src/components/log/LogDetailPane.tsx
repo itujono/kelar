@@ -37,6 +37,7 @@ export const LogDetailPane: React.FC<LogDetailPaneProps> = ({ log, allLogs }) =>
       <Box marginTop={1} flexDirection="column">
         <Text bold color="yellow">{log.identifier}</Text>
         <Text color="white" wrap="wrap">{log.label || "No Description"}</Text>
+        {remarks && <Text color="dim" wrap="wrap" italic>{remarks}</Text>}
       </Box>
 
       <Box
@@ -60,12 +61,6 @@ export const LogDetailPane: React.FC<LogDetailPaneProps> = ({ log, allLogs }) =>
         <Box>
           <Box width={15}><Text color="dim">Project:</Text></Box>
           <Text>{log.project || "-"}</Text>
-        </Box>
-        <Box>
-          <Box width={15} flexShrink={0}><Text color="dim">Remarks:</Text></Box>
-          <Box flexGrow={1}>
-            <Text wrap="wrap" color={remarks ? undefined : "dim"}>{remarks || "-"}</Text>
-          </Box>
         </Box>
       </Box>
 
