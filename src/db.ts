@@ -8,6 +8,11 @@ const DB_PATH = join(KELAR_DIR, "kelar.db");
 
 let _db: Database | null = null;
 
+// Stored timestamps are always UTC so range queries can compare them as strings
+function toUtcIso(timestamp: string): string {
+  return new Date(timestamp).toISOString();
+}
+
 function getDb(): Database {
   if (_db) return _db;
 
@@ -48,6 +53,16 @@ function getDb(): Database {
   }
   if (!existingColumns.has("comment")) {
     _db.run("ALTER TABLE logs ADD COLUMN comment TEXT");
+  }
+
+  // Migration: created_at used to keep Jira's offset (e.g. "+0200"), which breaks string range
+  // comparisons against UTC ISO bounds. Normalize legacy rows to UTC.
+  const legacyRows = _db.prepare("SELECT id, created_at FROM logs WHERE created_at NOT LIKE '%Z'").all() as { id: number; created_at: string }[];
+  if (legacyRows.length > 0) {
+    const normalize = _db.prepare("UPDATE logs SET created_at = ? WHERE id = ?");
+    _db.transaction(() => {
+      for (const row of legacyRows) normalize.run(toUtcIso(row.created_at), row.id);
+    })();
   }
 
   _db.run(`
@@ -98,7 +113,7 @@ export const dbOps = {
         comment = excluded.comment,
         minutes = excluded.minutes,
         created_at = excluded.created_at
-    `).run(log.identifier, log.label || null, log.project || null, log.comment || null, log.minutes, log.jira_worklog_id || null, log.is_jira ? 1 : 0, log.created_at);
+    `).run(log.identifier, log.label || null, log.project || null, log.comment || null, log.minutes, log.jira_worklog_id || null, log.is_jira ? 1 : 0, toUtcIso(log.created_at));
   },
 
   getLogs: (sinceISO?: string, untilISO?: string): LogDbRow[] => {

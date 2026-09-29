@@ -1,15 +1,15 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { format } from "date-fns";
 import { type LogDbRow } from "../../db";
-import { formatMinutes } from "../../utils";
+import { formatMinutes, formatLogDate } from "../../utils";
 
 interface LogDetailPaneProps {
   log: LogDbRow;
   allLogs: LogDbRow[];
+  timeZone: string;
 }
 
-export const LogDetailPane: React.FC<LogDetailPaneProps> = ({ log, allLogs }) => {
+export const LogDetailPane: React.FC<LogDetailPaneProps> = ({ log, allLogs, timeZone }) => {
   // Find all logs for the same identifier (ticket key or personal log label)
   const identifierLogs = React.useMemo(() => {
     return allLogs
@@ -88,7 +88,7 @@ export const LogDetailPane: React.FC<LogDetailPaneProps> = ({ log, allLogs }) =>
                 <Box key={l.id}>
                   <Box width={7}>
                     <Text color={isCurrent ? "cyan" : "dim"}>
-                      {format(new Date(l.created_at), "dd MMM")}
+                      {formatLogDate(l.created_at, timeZone)}
                     </Text>
                   </Box>
                   <Box width={9}>
@@ -109,7 +109,7 @@ export const LogDetailPane: React.FC<LogDetailPaneProps> = ({ log, allLogs }) =>
                 <Box key={l.id}>
                   <Box width={7}>
                     <Text color={isCurrent ? "cyan" : "dim"}>
-                      {format(new Date(l.created_at), "dd MMM")}
+                      {formatLogDate(l.created_at, timeZone)}
                     </Text>
                   </Box>
                   <Box width={9}>

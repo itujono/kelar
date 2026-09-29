@@ -1,5 +1,5 @@
 import { test, expect, describe } from "bun:test";
-import { parseJiraTime, roundToNearest5, formatMinutes, formatDuration, extractAdfText, isZombieTicket } from "../src/utils";
+import { parseJiraTime, roundToNearest5, formatMinutes, formatDuration, extractAdfText, isZombieTicket, formatLogDate } from "../src/utils";
 import type { JiraIssue } from "../src/jira";
 
 describe("Time Parsing", () => {
@@ -253,3 +253,10 @@ describe("isZombieTicket", () => {
   });
 });
 
+describe("formatLogDate", () => {
+  test("formats the day in the given timezone, not the machine's", () => {
+    const lateBerlinLog = "2026-09-28T17:35:58.000Z"; // 19:35 Berlin, 00:35 next day WIB
+    expect(formatLogDate(lateBerlinLog, "Europe/Berlin")).toBe("28 Sep");
+    expect(formatLogDate(lateBerlinLog, "Asia/Jakarta")).toBe("29 Sep");
+  });
+});

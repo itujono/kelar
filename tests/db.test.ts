@@ -142,6 +142,27 @@ describe("dbOps - logs", () => {
     dbOps.deleteLogsByWorklogIds([insideId, outsideId]);
   });
 
+  test("addLog stores Jira offset timestamps as UTC", () => {
+    const worklogId = uniqueId();
+
+    dbOps.addLog({
+      identifier: "TEST-OFFSET",
+      minutes: 60,
+      jira_worklog_id: worklogId,
+      is_jira: true,
+      created_at: "2099-09-28T19:35:58.000+0200",
+    });
+
+    const found = dbOps.getLogs().find(l => l.jira_worklog_id === worklogId);
+    expect(found!.created_at).toBe("2099-09-28T17:35:58.000Z");
+
+    // Would be dropped by a string comparison against the raw "+0200" value
+    const inRange = dbOps.getLogs("2099-09-27T22:00:00.000Z", "2099-09-28T22:00:00.000Z");
+    expect(inRange.find(l => l.jira_worklog_id === worklogId)).toBeDefined();
+
+    dbOps.deleteLogsByWorklogIds([worklogId]);
+  });
+
   test("addLog without jira_worklog_id inserts null", () => {
     const now = new Date().toISOString();
     const beforeCount = dbOps.getLogs().length;

@@ -1,8 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { format } from "date-fns";
 import { Table } from "../Table";
-import { formatMinutes } from "../../utils";
+import { formatMinutes, formatLogDate } from "../../utils";
 import { type LogDbRow } from "../../db";
 import type { PeriodType } from "../../hooks/useLogView";
 import { useWindowedSlice } from "../../hooks/useWindowedSlice";
@@ -15,6 +14,7 @@ interface LogTableProps {
   daysRemaining: number;
   totalMinutes: number;
   personalCount: number;
+  timeZone: string;
   isLoading?: boolean;
 }
 
@@ -26,6 +26,7 @@ export const LogTable: React.FC<LogTableProps> = ({
   daysRemaining,
   totalMinutes,
   personalCount,
+  timeZone,
   isLoading = false,
 }) => {
   const getEmptyMessage = () => {
@@ -53,7 +54,7 @@ export const LogTable: React.FC<LogTableProps> = ({
   }
 
   const data = visibleLogs.map(log => ({
-    Date: format(new Date(log.created_at), "dd MMM"),
+    Date: formatLogDate(log.created_at, timeZone),
     Identifier: log.identifier,
     Project: log.project || "-",
     Label: log.label || "",

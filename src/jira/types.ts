@@ -4,6 +4,7 @@ export interface JiraUser {
   emailAddress?: string;
   avatarUrls?: Record<string, string>;
   accountType?: "atlassian" | "app" | "customer" | "unknown";
+  timeZone?: string;
 }
 
 export interface JiraIssue {

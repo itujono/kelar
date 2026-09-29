@@ -21,6 +21,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@date-fns/tz": "^1.5.0",
     "@tanstack/react-query": "^5.99.0",
     "commander": "^14.0.3",
     "date-fns": "^4.1.0",

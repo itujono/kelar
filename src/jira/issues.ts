@@ -1,4 +1,4 @@
-import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
 import { dbOps } from "../db";
 import { getBaseUrl, jiraHeaders, validateJiraIssue } from "./client";
 import { clearTixCache } from "./cache";
@@ -24,7 +24,8 @@ export async function fetchIssueDetails(issueKey: string): Promise<JiraIssue> {
 }
 
 export async function searchIssues(jql: string, maxResults: number = 100): Promise<JiraIssue[]> {
-  const CACHE_KEY = `TIX_CACHE_V3_${Buffer.from(jql).toString("base64").substring(0, 50)}_${maxResults}`;
+  // Hash the full JQL: a truncated prefix makes queries that only differ in their date clauses share an entry
+  const CACHE_KEY = `TIX_CACHE_V4_${createHash("sha1").update(jql).digest("hex")}_${maxResults}`;
   const CACHE_TS_KEY = `${CACHE_KEY}_TS`;
   const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 

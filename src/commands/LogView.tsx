@@ -37,7 +37,8 @@ export function LogView({ period = "day", sortBy = "newest", isGenerateMode = fa
         data.calculationDay,
         data.daysRemaining,
         data.totalMinutesAll,
-        data.personalCount
+        data.personalCount,
+        data.timeZone
       );
 
       const filename = `kelar-report-${data.currentPeriod}-${format(new Date(), "dd-MM-yyyy-HHmm")}.html`;
@@ -52,7 +53,7 @@ export function LogView({ period = "day", sortBy = "newest", isGenerateMode = fa
     } else if (isGenerateMode && data.status === "ERROR") {
       exit();
     }
-  }, [data.status, isGenerateMode, data.isGenerating, exit, data.sortedLogs, data.currentPeriod, data.targetHours, data.calculationDay, data.daysRemaining, data.totalMinutesAll, data.personalCount, setIsGenerating]);
+  }, [data.status, isGenerateMode, data.isGenerating, exit, data.sortedLogs, data.currentPeriod, data.targetHours, data.calculationDay, data.daysRemaining, data.totalMinutesAll, data.personalCount, data.timeZone, setIsGenerating]);
 
   if (data.status === "ERROR") {
     return (
@@ -118,11 +119,12 @@ export function LogView({ period = "day", sortBy = "newest", isGenerateMode = fa
             daysRemaining={data.daysRemaining}
             totalMinutes={data.totalMinutesAll}
             personalCount={data.personalCount}
+            timeZone={data.timeZone}
             isLoading={data.status === "SYNCING"}
           />
         </Box>
         {data.status !== "SYNCING" && data.activeLog && (
-          <LogDetailPane log={data.activeLog} allLogs={data.logs} />
+          <LogDetailPane log={data.activeLog} allLogs={data.logs} timeZone={data.timeZone} />
         )}
       </Box>
 

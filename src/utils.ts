@@ -1,6 +1,14 @@
 import { type JiraAdfDoc } from "./jira";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
+import { TZDate } from "@date-fns/tz";
 import { type JiraIssue } from "./jira";
+
+/**
+ * Formats a log timestamp as a day label (e.g. "28 Sep") in the given timezone
+ */
+export function formatLogDate(timestamp: string, timeZone: string): string {
+  return format(new TZDate(timestamp, timeZone), "dd MMM");
+}
 
 /**
  * Shortens relative time strings (e.g., "6 hours" -> "6h", "2 days" -> "2d")

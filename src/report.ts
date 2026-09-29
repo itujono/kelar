@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { formatMinutes } from "./utils";
+import { formatMinutes, formatLogDate } from "./utils";
 
 function escapeHtml(s: string): string {
   return s
@@ -16,7 +16,8 @@ export function generateHtmlReport(
     calculationDay: number,
     daysRemaining: number,
     totalMinutesAll: number,
-    personalCount: number
+    personalCount: number,
+    timeZone: string = Intl.DateTimeFormat().resolvedOptions().timeZone
 ) {
     const percentage = ((totalMinutesAll / (targetHours * 60)) * 100).toFixed(1);
     const progressRatio = Math.min(1, totalMinutesAll / (targetHours * 60));
@@ -24,7 +25,7 @@ export function generateHtmlReport(
 
     const rows = logs.map(log => `
     <tr>
-      <td>${format(new Date(log.created_at), "dd MMM")}</td>
+      <td>${formatLogDate(log.created_at, timeZone)}</td>
       <td><span class="badge ${log.is_jira ? 'jira' : 'personal'}">${log.is_jira ? 'Jira' : 'Personal'}</span></td>
       <td class="identifier">${escapeHtml(log.identifier)}</td>
       <td class="label">${escapeHtml(log.label || "")}</td>

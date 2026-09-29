@@ -2,7 +2,8 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from "react"
 import { useInput, useApp } from "ink";
 import { format, startOfWeek, startOfMonth, startOfDay, subDays, setDate, addMonths, differenceInCalendarDays } from "date-fns";
 import { dbOps, type LogDbRow } from "../db";
-import { searchIssues, fetchIssueWorklogs } from "../jira";
+import { TZDate } from "@date-fns/tz";
+import { searchIssues, fetchIssueWorklogs, fetchMe } from "../jira";
 import { getAppConfig, isConfigValid, DEFAULT_MONTHLY_TARGET_HOURS, DEFAULT_CALCULATION_DAY } from "../config";
 import { useListState } from "./useListState";
 import { openUrl } from "../platform";
@@ -10,6 +11,28 @@ import { openUrl } from "../platform";
 export type SortType = "longest" | "shortest" | "newest" | "oldest";
 export type PeriodType = "day" | "yesterday" | "week" | "month";
 export type ViewStatus = "IDLE" | "SYNCING" | "SUCCESS" | "ERROR";
+
+const JIRA_TIMEZONE_KEY = "JIRA_TIMEZONE";
+
+function getCachedTimeZone(): string {
+  return dbOps.getConfig(JIRA_TIMEZONE_KEY) || Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+/**
+ * Period bounds computed in the Jira profile timezone, which is what JQL `worklogDate`
+ * and the Jira UI use to decide which day a worklog belongs to. `until` is exclusive;
+ * open-ended periods run up to now.
+ */
+export function getPeriodRange(period: PeriodType, timeZone: string, now: Date = new Date()): { since: Date; until?: Date } {
+  const zonedNow = new TZDate(now, timeZone);
+  const toDate = (d: TZDate) => new Date(d.getTime());
+  switch (period) {
+    case "yesterday": return { since: toDate(startOfDay(subDays(zonedNow, 1))), until: toDate(startOfDay(zonedNow)) };
+    case "week": return { since: toDate(startOfWeek(zonedNow, { weekStartsOn: 1 })) };
+    case "month": return { since: toDate(startOfMonth(zonedNow)) };
+    default: return { since: toDate(startOfDay(zonedNow)) };
+  }
+}
 
 export function useLogView(period: PeriodType, sortBy: SortType) {
   const { exit } = useApp();
@@ -44,15 +67,22 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     { label: "This Month", value: "month" as const },
   ], []);
 
-  // `until` is exclusive; open-ended periods run up to now.
-  const getPeriodRange = useCallback((p: PeriodType): { since: Date; until?: Date } => {
-    const now = new Date();
-    switch (p) {
-      case "yesterday": return { since: startOfDay(subDays(now, 1)), until: startOfDay(now) };
-      case "week": return { since: startOfWeek(now, { weekStartsOn: 1 }) };
-      case "month": return { since: startOfMonth(now) };
-      default: return { since: startOfDay(now) };
+  const [timeZone, setTimeZone] = useState(getCachedTimeZone);
+
+  // Refresh the Jira profile timezone; fall back to the last known one if the lookup fails
+  const resolveTimeZone = useCallback(async () => {
+    let resolved = getCachedTimeZone();
+    try {
+      const me = await fetchMe();
+      if (me.timeZone) {
+        dbOps.setConfig(JIRA_TIMEZONE_KEY, me.timeZone);
+        resolved = me.timeZone;
+      }
+    } catch {
+      // Keep the cached timezone
     }
+    setTimeZone(resolved);
+    return resolved;
   }, []);
 
   const statusRef = useRef(status);
@@ -70,14 +100,15 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       return;
     }
 
-    const { since: sinceDate, until: untilDate } = getPeriodRange(currentPeriod);
     const lastSyncKey = `LAST_SYNC_${currentPeriod.toUpperCase()}`;
 
     try {
       setStatus("SYNCING");
-      const jqlDate = format(sinceDate, "yyyy-MM-dd");
-      let jql = `worklogAuthor = currentUser() AND worklogDate >= "${jqlDate}"`;
-      if (untilDate) jql += ` AND worklogDate < "${format(untilDate, "yyyy-MM-dd")}"`;
+      const jiraTimeZone = await resolveTimeZone();
+      const { since: sinceDate, until: untilDate } = getPeriodRange(currentPeriod, jiraTimeZone);
+      const toJqlDate = (d: Date) => format(new TZDate(d, jiraTimeZone), "yyyy-MM-dd");
+      let jql = `worklogAuthor = currentUser() AND worklogDate >= "${toJqlDate(sinceDate)}"`;
+      if (untilDate) jql += ` AND worklogDate < "${toJqlDate(untilDate)}"`;
 
       const issues = await searchIssues(jql, 500);
 
@@ -133,7 +164,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       setError(err instanceof Error ? err : new Error(String(err)));
       setStatus("ERROR");
     }
-  }, [currentPeriod, config, getPeriodRange]);
+  }, [currentPeriod, config, resolveTimeZone]);
 
   useEffect(() => {
     sync();
@@ -285,6 +316,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     sync,
     targetHours,
     calculationDay,
-    activeLog
+    activeLog,
+    timeZone
   };
 }
