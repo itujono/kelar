@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
+import { TZDate } from "@date-fns/tz";
 import { Table } from "../Table";
 import { formatMinutes, formatLogDate } from "../../utils";
 import { type LogDbRow } from "../../db";
@@ -30,7 +31,7 @@ export const LogTable: React.FC<LogTableProps> = ({
   isLoading = false,
 }) => {
   const getEmptyMessage = () => {
-    const now = new Date();
+    const now = new TZDate(new Date(), timeZone);
     if (period === "day") return "No logs yet today. Ready to crush some tasks?";
     if (period === "yesterday") return "No logs found for yesterday in Jira.";
     if (period === "week" && now.getDay() === 1) return "The week has just started! Time to build some momentum.";

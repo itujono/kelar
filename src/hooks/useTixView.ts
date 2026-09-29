@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useTixShortcuts } from "./useTixShortcuts";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, startOfMonth, differenceInCalendarDays, setDate, addMonths } from "date-fns";
 import {
   searchIssues,
   fetchUsers,
@@ -10,10 +9,13 @@ import {
   postWorklog,
   updateIssueEstimate,
   fetchActivityCountToday,
-  fetchUserWorklogs
+  fetchUserWorklogs,
+  getCachedJiraTimeZone,
+  refreshJiraTimeZone
 } from "../jira";
 import { getAppConfig, DEFAULT_CALCULATION_DAY, DEFAULT_MONTHLY_TARGET_HOURS } from "../config";
 import { parseJiraTime, getNowWithOffset } from "../utils";
+import { getPeriodRange, toJqlDate, getDaysUntilCalculationDay } from "../period";
 
 export function useTixView(initialPeerMode: boolean) {
   // Config is read once on mount. Changes made while the TUI is running
@@ -54,9 +56,17 @@ export function useTixView(initialPeerMode: boolean) {
     enabled: isUserSelecting
   });
 
-  const jqlDate = format(startOfMonth(new Date()), "yyyy-MM-dd");
+  // Start from the cached timezone so queries fire immediately; they re-run if the lookup changes it
+  const { data: timeZone = getCachedJiraTimeZone() } = useQuery({
+    queryKey: ["jiraTimeZone"],
+    queryFn: refreshJiraTimeZone,
+    staleTime: Infinity,
+  });
+  const monthStart = getPeriodRange("month", timeZone).since;
+  const jqlDate = toJqlDate(monthStart, timeZone);
+
   const { data: tickets, isLoading: isLoadingTickets, refetch: refetchTickets } = useQuery({
-    queryKey: ["tickets", accountId],
+    queryKey: ["tickets", accountId, jqlDate],
     queryFn: () => searchIssues(`assignee = ${accountId} AND updated >= "${jqlDate}"`),
     enabled: !!accountId && !isUserSelecting
   });
@@ -71,8 +81,8 @@ export function useTixView(initialPeerMode: boolean) {
   const calculationDay = parseInt(config.LAST_CALCULATION_DAY, 10) || DEFAULT_CALCULATION_DAY;
 
   const { data: monthlyLogsResult } = useQuery({
-    queryKey: ["monthlyLogs", accountId],
-    queryFn: () => fetchUserWorklogs(accountId!, startOfMonth(new Date()).toISOString()),
+    queryKey: ["monthlyLogs", accountId, jqlDate, timeZone],
+    queryFn: () => fetchUserWorklogs(accountId!, monthStart, timeZone),
     enabled: !!accountId && !isUserSelecting
   });
 
@@ -84,14 +94,10 @@ export function useTixView(initialPeerMode: boolean) {
     [monthlyLogs]
   );
 
-  const daysRemaining = useMemo(() => {
-    const now = new Date();
-    let targetDate = setDate(now, calculationDay);
-    if (now.getDate() > calculationDay) {
-      targetDate = addMonths(targetDate, 1);
-    }
-    return differenceInCalendarDays(targetDate, now);
-  }, [calculationDay]);
+  const daysRemaining = useMemo(
+    () => getDaysUntilCalculationDay(calculationDay, timeZone),
+    [calculationDay, timeZone]
+  );
 
   const filteredTickets = useMemo(() => {
     return (tickets || []).filter(t => {

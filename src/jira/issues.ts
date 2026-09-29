@@ -133,14 +133,11 @@ export async function updateIssueEstimate(issueKey: string, estimateSeconds: num
 
 export async function fetchActivityCountToday(): Promise<number> {
   const jql = `worklogDate >= startOfDay() AND worklogAuthor = currentUser()`;
-  const url = `${getBaseUrl()}/search`;
+  const url = `${getBaseUrl()}/search/approximate-count`;
   const response = await fetch(url, {
     method: "POST",
     headers: { ...jiraHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      maxResults: 100,
-      fields: ["key"]
-    })
+    body: JSON.stringify({ jql })
   });
 
   if (!response.ok) {
@@ -148,6 +145,6 @@ export async function fetchActivityCountToday(): Promise<number> {
     throw new Error(`Failed to fetch today's activity: ${response.status} ${errorText}`);
   }
 
-  const data = await response.json() as { total: number };
-  return data.total;
+  const data = await response.json() as { count: number };
+  return data.count;
 }

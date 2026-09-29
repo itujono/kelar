@@ -2,6 +2,7 @@ import { getBaseUrl, jiraHeaders, validateJiraWorklog } from "./client";
 import { clearTixCache } from "./cache";
 import { searchIssues } from "./issues";
 import type { JiraWorklog, FetchWorklogsResult } from "./types";
+import { toJqlDate } from "../period";
 
 export async function postWorklog(issueKey: string, minutes: number, comment: string, started: string): Promise<JiraWorklog> {
   const url = `${getBaseUrl()}/issue/${issueKey}/worklog`;
@@ -71,14 +72,13 @@ export async function fetchIssueWorklogs(issueIdOrKey: string): Promise<JiraWork
   return allWorklogs;
 }
 
-export async function fetchUserWorklogs(accountId: string, sinceDate: string): Promise<FetchWorklogsResult> {
-  const jql = `worklogAuthor = "${accountId}" AND worklogDate >= "${sinceDate.split("T")[0]}"`;
+export async function fetchUserWorklogs(accountId: string, since: Date, timeZone: string): Promise<FetchWorklogsResult> {
+  const jql = `worklogAuthor = "${accountId}" AND worklogDate >= "${toJqlDate(since, timeZone)}"`;
   const issues = await searchIssues(jql);
 
   const allWorklogs: JiraWorklog[] = [];
   const seenIds = new Set<string>();
   const warnings: string[] = [];
-  const since = new Date(sinceDate);
 
   function addWorklog(wl: JiraWorklog) {
     const wlDate = new Date(wl.started);

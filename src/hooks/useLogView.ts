@@ -1,38 +1,15 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useInput, useApp } from "ink";
-import { format, startOfWeek, startOfMonth, startOfDay, subDays, setDate, addMonths, differenceInCalendarDays } from "date-fns";
 import { dbOps, type LogDbRow } from "../db";
-import { TZDate } from "@date-fns/tz";
-import { searchIssues, fetchIssueWorklogs, fetchMe } from "../jira";
+import { searchIssues, fetchIssueWorklogs, getCachedJiraTimeZone, refreshJiraTimeZone } from "../jira";
 import { getAppConfig, isConfigValid, DEFAULT_MONTHLY_TARGET_HOURS, DEFAULT_CALCULATION_DAY } from "../config";
 import { useListState } from "./useListState";
 import { openUrl } from "../platform";
+import { getPeriodRange, toJqlDate, getDaysUntilCalculationDay, type PeriodType } from "../period";
 
 export type SortType = "longest" | "shortest" | "newest" | "oldest";
-export type PeriodType = "day" | "yesterday" | "week" | "month";
+export type { PeriodType };
 export type ViewStatus = "IDLE" | "SYNCING" | "SUCCESS" | "ERROR";
-
-const JIRA_TIMEZONE_KEY = "JIRA_TIMEZONE";
-
-function getCachedTimeZone(): string {
-  return dbOps.getConfig(JIRA_TIMEZONE_KEY) || Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
-
-/**
- * Period bounds computed in the Jira profile timezone, which is what JQL `worklogDate`
- * and the Jira UI use to decide which day a worklog belongs to. `until` is exclusive;
- * open-ended periods run up to now.
- */
-export function getPeriodRange(period: PeriodType, timeZone: string, now: Date = new Date()): { since: Date; until?: Date } {
-  const zonedNow = new TZDate(now, timeZone);
-  const toDate = (d: TZDate) => new Date(d.getTime());
-  switch (period) {
-    case "yesterday": return { since: toDate(startOfDay(subDays(zonedNow, 1))), until: toDate(startOfDay(zonedNow)) };
-    case "week": return { since: toDate(startOfWeek(zonedNow, { weekStartsOn: 1 })) };
-    case "month": return { since: toDate(startOfMonth(zonedNow)) };
-    default: return { since: toDate(startOfDay(zonedNow)) };
-  }
-}
 
 export function useLogView(period: PeriodType, sortBy: SortType) {
   const { exit } = useApp();
@@ -67,23 +44,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     { label: "This Month", value: "month" as const },
   ], []);
 
-  const [timeZone, setTimeZone] = useState(getCachedTimeZone);
-
-  // Refresh the Jira profile timezone; fall back to the last known one if the lookup fails
-  const resolveTimeZone = useCallback(async () => {
-    let resolved = getCachedTimeZone();
-    try {
-      const me = await fetchMe();
-      if (me.timeZone) {
-        dbOps.setConfig(JIRA_TIMEZONE_KEY, me.timeZone);
-        resolved = me.timeZone;
-      }
-    } catch {
-      // Keep the cached timezone
-    }
-    setTimeZone(resolved);
-    return resolved;
-  }, []);
+  const [timeZone, setTimeZone] = useState(getCachedJiraTimeZone);
 
   const statusRef = useRef(status);
   useEffect(() => {
@@ -104,11 +65,11 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
 
     try {
       setStatus("SYNCING");
-      const jiraTimeZone = await resolveTimeZone();
+      const jiraTimeZone = await refreshJiraTimeZone();
+      setTimeZone(jiraTimeZone);
       const { since: sinceDate, until: untilDate } = getPeriodRange(currentPeriod, jiraTimeZone);
-      const toJqlDate = (d: Date) => format(new TZDate(d, jiraTimeZone), "yyyy-MM-dd");
-      let jql = `worklogAuthor = currentUser() AND worklogDate >= "${toJqlDate(sinceDate)}"`;
-      if (untilDate) jql += ` AND worklogDate < "${toJqlDate(untilDate)}"`;
+      let jql = `worklogAuthor = currentUser() AND worklogDate >= "${toJqlDate(sinceDate, jiraTimeZone)}"`;
+      if (untilDate) jql += ` AND worklogDate < "${toJqlDate(untilDate, jiraTimeZone)}"`;
 
       const issues = await searchIssues(jql, 500);
 
@@ -164,7 +125,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       setError(err instanceof Error ? err : new Error(String(err)));
       setStatus("ERROR");
     }
-  }, [currentPeriod, config, resolveTimeZone]);
+  }, [currentPeriod, config]);
 
   useEffect(() => {
     sync();
@@ -208,14 +169,10 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
     return filteredLogs.filter(log => !log.is_jira).length;
   }, [filteredLogs]);
 
-  const daysRemaining = useMemo(() => {
-    const now = new Date();
-    let targetDate = setDate(now, calculationDay);
-    if (now.getDate() > calculationDay) {
-      targetDate = addMonths(targetDate, 1);
-    }
-    return differenceInCalendarDays(targetDate, now);
-  }, [calculationDay]);
+  const daysRemaining = useMemo(
+    () => getDaysUntilCalculationDay(calculationDay, timeZone),
+    [calculationDay, timeZone]
+  );
 
   const activeLog = useMemo(() => sortedLogs[nav.selectedIndex], [sortedLogs, nav.selectedIndex]);
 
