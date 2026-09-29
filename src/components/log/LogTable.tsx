@@ -31,6 +31,7 @@ export const LogTable: React.FC<LogTableProps> = ({
   const getEmptyMessage = () => {
     const now = new Date();
     if (period === "day") return "No logs yet today. Ready to crush some tasks?";
+    if (period === "yesterday") return "No logs found for yesterday in Jira.";
     if (period === "week" && now.getDay() === 1) return "The week has just started! Time to build some momentum.";
     if (period === "month" && now.getDate() <= 3) return "Fresh month alert! Let's get a head start on that goal.";
     return `No logs found for this ${period} in Jira.`;

@@ -61,7 +61,7 @@ log
   .command("list")
   .alias("view")
   .description("List work logs for a period")
-  .argument("[period]", "Period to view (day, week, month)", "month")
+  .argument("[period]", "Period to view (day, yesterday, week, month)", "month")
   .option("-s, --sort <type>", "Sort by (longest, shortest, newest, oldest)", "newest")
   .action(async (period, options) => {
     const { waitUntilExit } = render(
@@ -76,7 +76,7 @@ log
 log
   .command("generate")
   .description("Generate an HTML report of the work log table")
-  .argument("[period]", "Period to view (day, week, month)", "day")
+  .argument("[period]", "Period to view (day, yesterday, week, month)", "day")
   .option("-s, --sort <type>", "Sort by (longest, shortest, newest, oldest)", "newest")
   .action(async (period, options) => {
     const { waitUntilExit } = render(

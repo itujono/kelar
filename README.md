@@ -9,7 +9,7 @@ A terminal-based Jira and Bitbucket manager. Track worklogs, monitor pull reques
 | Command | Description |
 | :--- | :--- |
 | `kelar log new <id> <time> [msg]` | Log work. Parses `1h 30m`, `45m`, etc. |
-| `kelar log list [period]` | View logs for `day`, `week`, or `month`. |
+| `kelar log list [period]` | View logs for `day`, `yesterday`, `week`, or `month`. |
 | `kelar log generate [period]` | Generate an HTML report. |
 | `kelar log config list` | View Jira config. |
 | `kelar log config set <key> <val>` | Update a config value. |

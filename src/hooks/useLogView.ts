@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useInput, useApp } from "ink";
-import { format, startOfWeek, startOfMonth, startOfDay, setDate, addMonths, differenceInCalendarDays } from "date-fns";
+import { format, startOfWeek, startOfMonth, startOfDay, subDays, setDate, addMonths, differenceInCalendarDays } from "date-fns";
 import { dbOps, type LogDbRow } from "../db";
 import { searchIssues, fetchIssueWorklogs } from "../jira";
 import { getAppConfig, isConfigValid, DEFAULT_MONTHLY_TARGET_HOURS, DEFAULT_CALCULATION_DAY } from "../config";
@@ -8,7 +8,7 @@ import { useListState } from "./useListState";
 import { openUrl } from "../platform";
 
 export type SortType = "longest" | "shortest" | "newest" | "oldest";
-export type PeriodType = "day" | "week" | "month";
+export type PeriodType = "day" | "yesterday" | "week" | "month";
 export type ViewStatus = "IDLE" | "SYNCING" | "SUCCESS" | "ERROR";
 
 export function useLogView(period: PeriodType, sortBy: SortType) {
@@ -39,16 +39,19 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
 
   const periodOptions = useMemo(() => [
     { label: "Today", value: "day" as const },
+    { label: "Yesterday", value: "yesterday" as const },
     { label: "This Week", value: "week" as const },
     { label: "This Month", value: "month" as const },
   ], []);
 
-  const getSinceDate = useCallback((p: PeriodType) => {
+  // `until` is exclusive; open-ended periods run up to now.
+  const getPeriodRange = useCallback((p: PeriodType): { since: Date; until?: Date } => {
     const now = new Date();
     switch (p) {
-      case "week": return startOfWeek(now, { weekStartsOn: 1 });
-      case "month": return startOfMonth(now);
-      default: return startOfDay(now);
+      case "yesterday": return { since: startOfDay(subDays(now, 1)), until: startOfDay(now) };
+      case "week": return { since: startOfWeek(now, { weekStartsOn: 1 }) };
+      case "month": return { since: startOfMonth(now) };
+      default: return { since: startOfDay(now) };
     }
   }, []);
 
@@ -67,13 +70,14 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
       return;
     }
 
-    const sinceDate = getSinceDate(currentPeriod);
+    const { since: sinceDate, until: untilDate } = getPeriodRange(currentPeriod);
     const lastSyncKey = `LAST_SYNC_${currentPeriod.toUpperCase()}`;
 
     try {
       setStatus("SYNCING");
       const jqlDate = format(sinceDate, "yyyy-MM-dd");
-      const jql = `worklogAuthor = currentUser() AND worklogDate >= "${jqlDate}"`;
+      let jql = `worklogAuthor = currentUser() AND worklogDate >= "${jqlDate}"`;
+      if (untilDate) jql += ` AND worklogDate < "${format(untilDate, "yyyy-MM-dd")}"`;
 
       const issues = await searchIssues(jql, 500);
 
@@ -95,7 +99,7 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
 
         for (const wl of worklogs) {
           const wlDate = new Date(wl.started);
-          if (wl.author.accountId === myAccountId && wlDate >= sinceDate) {
+          if (wl.author.accountId === myAccountId && wlDate >= sinceDate && (!untilDate || wlDate < untilDate)) {
             const isPersonal = issue.key === config.PERSONAL_TICKET_ID;
             let commentText = "";
             if (wl.comment?.content?.[0]?.content?.[0]?.text) {
@@ -116,20 +120,20 @@ export function useLogView(period: PeriodType, sortBy: SortType) {
         }
       }
 
-      dbOps.clearAllLogsInRange(sinceDate.toISOString());
+      dbOps.clearAllLogsInRange(sinceDate.toISOString(), untilDate?.toISOString());
       for (const rl of remoteLogs) {
         dbOps.addLog(rl);
       }
       dbOps.setConfig(lastSyncKey, new Date().toISOString());
 
-      const updatedLogs = dbOps.getLogs(sinceDate.toISOString());
+      const updatedLogs = dbOps.getLogs(sinceDate.toISOString(), untilDate?.toISOString());
       setLogs(updatedLogs);
       setStatus("SUCCESS");
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)));
       setStatus("ERROR");
     }
-  }, [currentPeriod, config, getSinceDate]);
+  }, [currentPeriod, config, getPeriodRange]);
 
   useEffect(() => {
     sync();

@@ -101,8 +101,11 @@ export const dbOps = {
     `).run(log.identifier, log.label || null, log.project || null, log.comment || null, log.minutes, log.jira_worklog_id || null, log.is_jira ? 1 : 0, log.created_at);
   },
 
-  getLogs: (sinceISO?: string): LogDbRow[] => {
+  getLogs: (sinceISO?: string, untilISO?: string): LogDbRow[] => {
     const db = getDb();
+    if (sinceISO && untilISO) {
+      return db.prepare("SELECT * FROM logs WHERE created_at >= ? AND created_at < ? ORDER BY created_at DESC").all(sinceISO, untilISO) as LogDbRow[];
+    }
     if (sinceISO) {
       return db.prepare("SELECT * FROM logs WHERE created_at >= ? ORDER BY created_at DESC").all(sinceISO) as LogDbRow[];
     }
@@ -116,8 +119,11 @@ export const dbOps = {
     return db.prepare(`DELETE FROM logs WHERE jira_worklog_id IN (${placeholders})`).run(...ids);
   },
 
-  clearAllLogsInRange: (sinceISO: string) => {
+  clearAllLogsInRange: (sinceISO: string, untilISO?: string) => {
     const db = getDb();
+    if (untilISO) {
+      return db.prepare("DELETE FROM logs WHERE created_at >= ? AND created_at < ?").run(sinceISO, untilISO);
+    }
     return db.prepare("DELETE FROM logs WHERE created_at >= ?").run(sinceISO);
   },
 

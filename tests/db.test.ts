@@ -115,6 +115,33 @@ describe("dbOps - logs", () => {
     expect(found).toBeDefined();
   });
 
+  test("getLogs with sinceISO and untilISO excludes logs at or after until", () => {
+    const insideId = uniqueId();
+    const outsideId = uniqueId();
+    const base = Date.now() + 1_000_000;
+
+    dbOps.addLog({
+      identifier: "TEST-INSIDE",
+      minutes: 10,
+      jira_worklog_id: insideId,
+      is_jira: true,
+      created_at: new Date(base + 10000).toISOString(),
+    });
+    dbOps.addLog({
+      identifier: "TEST-OUTSIDE",
+      minutes: 10,
+      jira_worklog_id: outsideId,
+      is_jira: true,
+      created_at: new Date(base + 30000).toISOString(),
+    });
+
+    const filtered = dbOps.getLogs(new Date(base).toISOString(), new Date(base + 20000).toISOString());
+    expect(filtered.find(l => l.jira_worklog_id === insideId)).toBeDefined();
+    expect(filtered.find(l => l.jira_worklog_id === outsideId)).toBeUndefined();
+
+    dbOps.deleteLogsByWorklogIds([insideId, outsideId]);
+  });
+
   test("addLog without jira_worklog_id inserts null", () => {
     const now = new Date().toISOString();
     const beforeCount = dbOps.getLogs().length;
@@ -174,5 +201,34 @@ describe("dbOps - logs", () => {
 
     const afterDelete = dbOps.getLogs().find(l => l.jira_worklog_id === worklogId);
     expect(afterDelete).toBeUndefined();
+  });
+
+  test("clearAllLogsInRange with untilISO keeps logs at or after until", () => {
+    const insideId = uniqueId();
+    const outsideId = uniqueId();
+    const base = Date.now() + 2_000_000;
+
+    dbOps.addLog({
+      identifier: "TEST-CLEAR-INSIDE",
+      minutes: 10,
+      jira_worklog_id: insideId,
+      is_jira: true,
+      created_at: new Date(base + 10000).toISOString(),
+    });
+    dbOps.addLog({
+      identifier: "TEST-CLEAR-OUTSIDE",
+      minutes: 10,
+      jira_worklog_id: outsideId,
+      is_jira: true,
+      created_at: new Date(base + 30000).toISOString(),
+    });
+
+    dbOps.clearAllLogsInRange(new Date(base).toISOString(), new Date(base + 20000).toISOString());
+
+    const logs = dbOps.getLogs();
+    expect(logs.find(l => l.jira_worklog_id === insideId)).toBeUndefined();
+    expect(logs.find(l => l.jira_worklog_id === outsideId)).toBeDefined();
+
+    dbOps.deleteLogsByWorklogIds([outsideId]);
   });
 });
